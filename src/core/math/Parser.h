@@ -17,7 +17,14 @@ namespace Calculator
 
     private:
         std::vector<Token> tokens;
+        std::size_t current = 0;
+
+        Expression parseExpression();
+        Expression parseTerm();
+        Expression parsePower();
+        Expression parsePrimary();
     };
+
 }
 
 #endif

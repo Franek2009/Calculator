@@ -110,3 +110,75 @@ TEST_CASE("Parser recognizes exponentiation")
     REQUIRE(result.right->type == Calculator::ExpressionType::Number);
     REQUIRE(result.right->value == 3);
 }
+TEST_CASE("Parser respects operator precedence")
+{
+    Calculator::Lexer lexer("2+3*4");
+
+    auto tokens = lexer.tokenize();
+
+    Calculator::Parser parser(tokens);
+
+    auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operation == Calculator::Operator::Add);
+
+    REQUIRE(result.left->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.left->value == 2);
+
+    REQUIRE(result.right->type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.right->operation == Calculator::Operator::Multiply);
+
+    REQUIRE(result.right->left->value == 3);
+    REQUIRE(result.right->right->value == 4);
+}
+TEST_CASE("Parser builds correct AST for mixed precedence")
+{
+    Calculator::Lexer lexer("2+3*4");
+
+    auto tokens = lexer.tokenize();
+
+    Calculator::Parser parser(tokens);
+
+    auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operation == Calculator::Operator::Add);
+
+    REQUIRE(result.left->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.left->value == 2);
+
+    REQUIRE(result.right->type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.right->operation == Calculator::Operator::Multiply);
+
+    REQUIRE(result.right->left->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.right->left->value == 3);
+
+    REQUIRE(result.right->right->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.right->right->value == 4);
+}
+TEST_CASE("Parser respects parentheses")
+{
+    Calculator::Lexer lexer("(2+3)*4");
+
+    auto tokens = lexer.tokenize();
+
+    Calculator::Parser parser(tokens);
+
+    auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operation == Calculator::Operator::Multiply);
+
+    REQUIRE(result.left->type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.left->operation == Calculator::Operator::Add);
+
+    REQUIRE(result.left->left->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.left->left->value == 2);
+
+    REQUIRE(result.left->right->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.left->right->value == 3);
+
+    REQUIRE(result.right->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.right->value == 4);
+}
