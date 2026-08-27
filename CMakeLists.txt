@@ -24,6 +24,7 @@ add_executable(CalculatorTests
     tests/LexerTests.cpp
     src/core/math/BasicOperations.cpp
     src/core/math/Lexer.cpp
+    src/core/math/Parser.cpp
 )
 
 target_link_libraries(CalculatorTests
