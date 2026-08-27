@@ -53,7 +53,21 @@ namespace Calculator
                 tokens.push_back({TokenType::Number, number});
                 continue;
             }
+            if (std::isalpha(current))
+            {
+                std::string function;
 
+                while (i < input.length() && std::isalpha(input[i]))
+                {
+                    function += input[i];
+                    ++i;
+                }
+
+                --i;
+
+                tokens.push_back({TokenType::Function, function});
+                continue;
+            }
             switch (current)
             {
                 case '+':

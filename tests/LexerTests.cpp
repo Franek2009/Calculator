@@ -54,3 +54,23 @@ TEST_CASE("Lexer rejects decimal point without a number")
 
     REQUIRE_THROWS_AS(lexer.tokenize(), std::invalid_argument);
 }
+TEST_CASE("Lexer recognizes a function")
+{
+    Calculator::Lexer lexer("sqrt(16)");
+
+    auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens.size() == 4);
+
+    REQUIRE(tokens[0].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[0].value == "sqrt");
+
+    REQUIRE(tokens[1].type == Calculator::TokenType::LeftParenthesis);
+    REQUIRE(tokens[1].value == "(");
+
+    REQUIRE(tokens[2].type == Calculator::TokenType::Number);
+    REQUIRE(tokens[2].value == "16");
+
+    REQUIRE(tokens[3].type == Calculator::TokenType::RightParenthesis);
+    REQUIRE(tokens[3].value == ")");
+}
