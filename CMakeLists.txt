@@ -21,7 +21,9 @@ find_package(Catch2 3 REQUIRED)
 
 add_executable(CalculatorTests
     tests/BasicOperationsTests.cpp
+    tests/LexerTests.cpp
     src/core/math/BasicOperations.cpp
+    src/core/math/Lexer.cpp
 )
 
 target_link_libraries(CalculatorTests
