@@ -13,3 +13,21 @@ add_executable(Calculator
 )
 
 target_link_libraries(Calculator PRIVATE Qt6::Widgets)
+
+include(CTest)
+enable_testing()
+
+find_package(Catch2 3 REQUIRED)
+
+add_executable(CalculatorTests
+    tests/BasicOperationsTests.cpp
+    src/core/math/BasicOperations.cpp
+)
+
+target_link_libraries(CalculatorTests
+    PRIVATE
+        Catch2::Catch2WithMain
+)
+
+include(Catch)
+catch_discover_tests(CalculatorTests)
