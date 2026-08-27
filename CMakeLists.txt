@@ -22,6 +22,7 @@ find_package(Catch2 3 REQUIRED)
 add_executable(CalculatorTests
     tests/BasicOperationsTests.cpp
     tests/LexerTests.cpp
+    tests/ParserTests.cpp
     src/core/math/BasicOperations.cpp
     src/core/math/Lexer.cpp
     src/core/math/Parser.cpp
