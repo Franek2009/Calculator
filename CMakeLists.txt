@@ -9,6 +9,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 add_executable(Calculator
     src/main.cpp
+    src/core/math/BasicOperations.cpp
 )
 
 target_link_libraries(Calculator PRIVATE Qt6::Widgets)
