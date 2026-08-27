@@ -25,10 +25,26 @@ namespace Calculator
             if (std::isdigit(current))
             {
                 std::string number;
+                bool hasDecimalPoint = false;
 
-                while (i < input.length() && std::isdigit(input[i]))
+                while (i < input.length())
                 {
-                    number += input[i];
+                    char character = input[i];
+
+                    if (std::isdigit(character))
+                    {
+                        number += character;
+                    }
+                    else if (character == '.' && !hasDecimalPoint)
+                    {
+                        number += character;
+                        hasDecimalPoint = true;
+                    }
+                    else
+                    {
+                        break;
+                    }
+
                     ++i;
                 }
 
