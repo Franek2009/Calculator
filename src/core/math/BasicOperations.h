@@ -1,7 +1,7 @@
 #ifndef BASIC_OPERATIONS_H
 #define BASIC_OPERATIONS_H
 
-namespace BasicOperations
+namespace Calculator::BasicOperations
 {
     double add(double a, double b);
     double subtract(double a, double b);

@@ -7,12 +7,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-add_executable(Calculator
-    src/main.cpp
+add_library(CalculatorCore STATIC
     src/core/math/BasicOperations.cpp
+    src/core/math/Lexer.cpp
+    src/core/math/Parser.cpp
+    src/core/math/Evaluator.cpp
 )
 
-target_link_libraries(Calculator PRIVATE Qt6::Widgets)
+target_include_directories(CalculatorCore
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/math
+)
+
+add_executable(Calculator
+    src/main.cpp
+)
+
+target_link_libraries(Calculator PRIVATE CalculatorCore Qt6::Widgets)
 
 include(CTest)
 enable_testing()
@@ -23,13 +34,13 @@ add_executable(CalculatorTests
     tests/BasicOperationsTests.cpp
     tests/LexerTests.cpp
     tests/ParserTests.cpp
-    src/core/math/BasicOperations.cpp
-    src/core/math/Lexer.cpp
-    src/core/math/Parser.cpp
+    tests/EvaluatorTests.cpp
+    tests/CalculationPipelineTests.cpp
 )
 
 target_link_libraries(CalculatorTests
     PRIVATE
+        CalculatorCore
         Catch2::Catch2WithMain
 )
 

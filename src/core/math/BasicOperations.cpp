@@ -3,7 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace BasicOperations
+namespace Calculator::BasicOperations
 {
     double add(double a, double b)
     {
