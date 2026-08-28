@@ -22,6 +22,7 @@ target_include_directories(CalculatorCore
 
 add_executable(Calculator
     src/main.cpp
+    src/ui/CalculatorWindow.cpp
 )
 
 target_link_libraries(Calculator PRIVATE CalculatorCore Qt6::Widgets)
