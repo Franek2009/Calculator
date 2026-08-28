@@ -8,7 +8,9 @@ namespace Calculator
     enum class ExpressionType
     {
         Number,
-        BinaryOperation
+        BinaryOperation,
+        UnaryOperation,
+        FunctionCall
     };
 
     enum class Operator
@@ -20,6 +22,16 @@ namespace Calculator
         Power
     };
 
+    enum class UnaryOperator
+    {
+        Negate
+    };
+
+    enum class Function
+    {
+        SquareRoot
+    };
+
     struct Expression
     {
         ExpressionType type;
@@ -29,6 +41,10 @@ namespace Calculator
 
         std::unique_ptr<Expression> left;
         std::unique_ptr<Expression> right;
+
+        UnaryOperator unaryOperation;
+        Function function;
+        std::unique_ptr<Expression> operand;
     };
 }
 

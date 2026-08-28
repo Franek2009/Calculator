@@ -31,6 +31,36 @@ namespace
             std::make_unique<Calculator::Expression>(std::move(right))
         };
     }
+
+    Calculator::Expression unary(Calculator::UnaryOperator operation,
+                                 Calculator::Expression operand)
+    {
+        return {
+            Calculator::ExpressionType::UnaryOperation,
+            0,
+            Calculator::Operator::Add,
+            nullptr,
+            nullptr,
+            operation,
+            Calculator::Function::SquareRoot,
+            std::make_unique<Calculator::Expression>(std::move(operand))
+        };
+    }
+
+    Calculator::Expression function(Calculator::Function function,
+                                    Calculator::Expression operand)
+    {
+        return {
+            Calculator::ExpressionType::FunctionCall,
+            0,
+            Calculator::Operator::Add,
+            nullptr,
+            nullptr,
+            Calculator::UnaryOperator::Negate,
+            function,
+            std::make_unique<Calculator::Expression>(std::move(operand))
+        };
+    }
 }
 
 TEST_CASE("Evaluator returns the value of a number expression")
@@ -96,4 +126,51 @@ TEST_CASE("Evaluator rejects binary expressions with a missing operand")
     };
 
     REQUIRE_THROWS_AS(evaluator.evaluate(expression), std::invalid_argument);
+}
+
+TEST_CASE("Evaluator evaluates unary negation and square root")
+{
+    Calculator::Evaluator evaluator;
+
+    REQUIRE(evaluator.evaluate(unary(Calculator::UnaryOperator::Negate, number(3))) == -3);
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::SquareRoot, number(9))) == 3);
+}
+
+TEST_CASE("Evaluator propagates square root domain errors")
+{
+    Calculator::Evaluator evaluator;
+    const auto expression = function(
+        Calculator::Function::SquareRoot,
+        unary(Calculator::UnaryOperator::Negate, number(1))
+    );
+
+    REQUIRE_THROWS_AS(evaluator.evaluate(expression), std::invalid_argument);
+}
+
+TEST_CASE("Evaluator rejects unary operations and function calls without operands")
+{
+    Calculator::Evaluator evaluator;
+    const Calculator::Expression unaryExpression{
+        Calculator::ExpressionType::UnaryOperation,
+        0,
+        Calculator::Operator::Add,
+        nullptr,
+        nullptr,
+        Calculator::UnaryOperator::Negate,
+        Calculator::Function::SquareRoot,
+        nullptr
+    };
+    const Calculator::Expression functionExpression{
+        Calculator::ExpressionType::FunctionCall,
+        0,
+        Calculator::Operator::Add,
+        nullptr,
+        nullptr,
+        Calculator::UnaryOperator::Negate,
+        Calculator::Function::SquareRoot,
+        nullptr
+    };
+
+    REQUIRE_THROWS_AS(evaluator.evaluate(unaryExpression), std::invalid_argument);
+    REQUIRE_THROWS_AS(evaluator.evaluate(functionExpression), std::invalid_argument);
 }

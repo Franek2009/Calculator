@@ -21,6 +21,7 @@ namespace Calculator
 
         Expression parseExpression();
         Expression parseTerm();
+        Expression parseUnary();
         Expression parsePower();
         Expression parsePrimary();
     };

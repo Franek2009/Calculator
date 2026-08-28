@@ -51,3 +51,25 @@ TEST_CASE("Calculation pipeline reports division by zero")
 {
     REQUIRE_THROWS_AS(calculate("1/(2-2)"), std::invalid_argument);
 }
+
+TEST_CASE("Calculation pipeline evaluates square root function calls")
+{
+    REQUIRE(calculate("sqrt(9)") == 3);
+    REQUIRE(calculate("sqrt(2.25)") == Catch::Approx(1.5));
+    REQUIRE(calculate("sqrt(4+5)") == 3);
+    REQUIRE(calculate("2*sqrt(9)+1") == 7);
+}
+
+TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negation")
+{
+    REQUIRE(calculate("-2^2") == -4);
+    REQUIRE(calculate("2^-2") == Catch::Approx(0.25));
+    REQUIRE(calculate("sqrt(9)^2") == 9);
+}
+
+TEST_CASE("Calculation pipeline reports function errors")
+{
+    REQUIRE_THROWS_AS(calculate("sqrt(-1)"), std::invalid_argument);
+    REQUIRE_THROWS_AS(calculate("sin(1)"), std::invalid_argument);
+    REQUIRE_THROWS_AS(calculate("sqrt(9"), std::invalid_argument);
+}

@@ -1,5 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <stdexcept>
+#include <string>
+
 #include "../src/core/math/Lexer.h"
 #include "../src/core/math/Parser.h"
 
@@ -181,4 +184,75 @@ TEST_CASE("Parser respects parentheses")
 
     REQUIRE(result.right->type == Calculator::ExpressionType::Number);
     REQUIRE(result.right->value == 4);
+}
+
+TEST_CASE("Parser recognizes square root function calls")
+{
+    Calculator::Lexer lexer("sqrt(16)");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.function == Calculator::Function::SquareRoot);
+    REQUIRE(result.operand->type == Calculator::ExpressionType::Number);
+    REQUIRE(result.operand->value == 16);
+}
+
+TEST_CASE("Parser allows an expression as a function argument")
+{
+    Calculator::Lexer lexer("sqrt(4+5)");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.operand->type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operand->operation == Calculator::Operator::Add);
+}
+
+TEST_CASE("Parser recognizes unary negation with exponentiation precedence")
+{
+    Calculator::Lexer lexer("-2^2");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::UnaryOperation);
+    REQUIRE(result.unaryOperation == Calculator::UnaryOperator::Negate);
+    REQUIRE(result.operand->type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operand->operation == Calculator::Operator::Power);
+}
+
+TEST_CASE("Parser accepts unary negation as an exponent")
+{
+    Calculator::Lexer lexer("2^-2");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.operation == Calculator::Operator::Power);
+    REQUIRE(result.right->type == Calculator::ExpressionType::UnaryOperation);
+}
+
+TEST_CASE("Parser rejects unsupported and malformed function calls")
+{
+    const auto parse = [](const std::string& input)
+    {
+        Calculator::Lexer lexer(input);
+        const auto tokens = lexer.tokenize();
+        Calculator::Parser parser(tokens);
+        return parser.parse();
+    };
+
+    REQUIRE_THROWS_AS(parse("sin(1)"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("sqrt"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("sqrt()"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("sqrt(9"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("sqrt(4) 2"), std::invalid_argument);
 }

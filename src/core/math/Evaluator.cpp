@@ -14,6 +14,7 @@ namespace Calculator
                 return expression.value;
 
             case ExpressionType::BinaryOperation:
+            {
                 if (!expression.left || !expression.right)
                 {
                     throw std::invalid_argument("Binary operation requires two operands");
@@ -41,6 +42,39 @@ namespace Calculator
                 }
 
                 throw std::invalid_argument("Unsupported operator");
+            }
+
+            case ExpressionType::UnaryOperation:
+            {
+                if (!expression.operand)
+                {
+                    throw std::invalid_argument("Unary operation requires an operand");
+                }
+
+                switch (expression.unaryOperation)
+                {
+                    case UnaryOperator::Negate:
+                        return -evaluate(*expression.operand);
+                }
+
+                throw std::invalid_argument("Unsupported unary operator");
+            }
+
+            case ExpressionType::FunctionCall:
+            {
+                if (!expression.operand)
+                {
+                    throw std::invalid_argument("Function call requires an argument");
+                }
+
+                switch (expression.function)
+                {
+                    case Function::SquareRoot:
+                        return BasicOperations::squareRoot(evaluate(*expression.operand));
+                }
+
+                throw std::invalid_argument("Unsupported function");
+            }
         }
 
         throw std::invalid_argument("Unsupported expression type");
