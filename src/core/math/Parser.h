@@ -1,6 +1,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <cstddef>
+#include <string>
 #include <vector>
 
 #include "Token.h"
@@ -24,6 +26,9 @@ namespace Calculator
         Expression parseUnary();
         Expression parsePower();
         Expression parsePrimary();
+
+        std::size_t errorPosition() const;
+        [[noreturn]] void throwSyntaxError(const std::string& description) const;
     };
 
 }

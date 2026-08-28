@@ -1,5 +1,7 @@
 #include "Lexer.h"
 
+#include "CalculatorError.h"
+
 #include <cctype>
 #include <stdexcept>
 
@@ -17,13 +19,14 @@ namespace Calculator
         {
             char current = input[i];
 
-            if (std::isspace(current))
+            if (std::isspace(static_cast<unsigned char>(current)))
             {
                 continue;
             }
 
-            if (std::isdigit(current))
+            if (std::isdigit(static_cast<unsigned char>(current)))
             {
+                const std::size_t position = i;
                 std::string number;
                 bool hasDecimalPoint = false;
 
@@ -31,7 +34,7 @@ namespace Calculator
                 {
                     char character = input[i];
 
-                    if (std::isdigit(character))
+                    if (std::isdigit(static_cast<unsigned char>(character)))
                     {
                         number += character;
                     }
@@ -50,14 +53,16 @@ namespace Calculator
 
                 --i;
 
-                tokens.push_back({TokenType::Number, number});
+                tokens.push_back({TokenType::Number, number, position});
                 continue;
             }
-            if (std::isalpha(current))
+            if (std::isalpha(static_cast<unsigned char>(current)))
             {
+                const std::size_t position = i;
                 std::string function;
 
-                while (i < input.length() && std::isalpha(input[i]))
+                while (i < input.length() &&
+                       std::isalpha(static_cast<unsigned char>(input[i])))
                 {
                     function += input[i];
                     ++i;
@@ -65,41 +70,45 @@ namespace Calculator
 
                 --i;
 
-                tokens.push_back({TokenType::Function, function});
+                tokens.push_back({TokenType::Function, function, position});
                 continue;
             }
             switch (current)
             {
                 case '+':
-                    tokens.push_back({TokenType::Plus, "+"});
+                    tokens.push_back({TokenType::Plus, "+", i});
                     break;
 
                 case '-':
-                    tokens.push_back({TokenType::Minus, "-"});
+                    tokens.push_back({TokenType::Minus, "-", i});
                     break;
 
                 case '*':
-                    tokens.push_back({TokenType::Multiply, "*"});
+                    tokens.push_back({TokenType::Multiply, "*", i});
                     break;
 
                 case '/':
-                    tokens.push_back({TokenType::Divide, "/"});
+                    tokens.push_back({TokenType::Divide, "/", i});
                     break;
 
                 case '^':
-                    tokens.push_back({TokenType::Power, "^"});
+                    tokens.push_back({TokenType::Power, "^", i});
                     break;
 
                 case '(':
-                    tokens.push_back({TokenType::LeftParenthesis, "("});
+                    tokens.push_back({TokenType::LeftParenthesis, "(", i});
                     break;
 
                 case ')':
-                    tokens.push_back({TokenType::RightParenthesis, ")"});
+                    tokens.push_back({TokenType::RightParenthesis, ")", i});
                     break;
 
                 default:
-                    throw std::invalid_argument("Unknown character");
+                    throw CalculatorError(
+                        ErrorCategory::Lexical,
+                        i,
+                        std::string("Unknown character '") + current + "'"
+                    );
             }
         }
 

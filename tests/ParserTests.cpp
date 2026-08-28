@@ -3,8 +3,34 @@
 #include <stdexcept>
 #include <string>
 
+#include "../src/core/math/CalculatorError.h"
 #include "../src/core/math/Lexer.h"
 #include "../src/core/math/Parser.h"
+
+namespace
+{
+    void requireSyntaxError(const std::string& input,
+                            std::size_t expectedPosition,
+                            const std::string& description)
+    {
+        try
+        {
+            Calculator::Lexer lexer(input);
+            const auto tokens = lexer.tokenize();
+            Calculator::Parser parser(tokens);
+            parser.parse();
+            FAIL("Expected a syntax error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Syntax);
+            REQUIRE(error.position() == expectedPosition);
+            REQUIRE(std::string(error.what()) ==
+                    "Syntax error at position " +
+                    std::to_string(expectedPosition + 1) + ": " + description);
+        }
+    }
+}
 
 TEST_CASE("Parser recognizes a single number")
 {
@@ -196,6 +222,7 @@ TEST_CASE("Parser recognizes square root function calls")
 
     REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
     REQUIRE(result.function == Calculator::Function::SquareRoot);
+    REQUIRE(result.position == 0);
     REQUIRE(result.operand->type == Calculator::ExpressionType::Number);
     REQUIRE(result.operand->value == 16);
 }
@@ -242,17 +269,22 @@ TEST_CASE("Parser accepts unary negation as an exponent")
 
 TEST_CASE("Parser rejects unsupported and malformed function calls")
 {
-    const auto parse = [](const std::string& input)
-    {
-        Calculator::Lexer lexer(input);
-        const auto tokens = lexer.tokenize();
-        Calculator::Parser parser(tokens);
-        return parser.parse();
-    };
+    requireSyntaxError("sin(1)", 0, "Unsupported function 'sin'");
+    requireSyntaxError("sqrt", 4, "Expected '(' after function name");
+    requireSyntaxError("sqrt()", 5, "Expected expression");
+    requireSyntaxError("sqrt(9", 6, "Expected ')'");
+    requireSyntaxError("sqrt(4) 2", 8, "Unexpected token '2' after expression");
+}
 
-    REQUIRE_THROWS_AS(parse("sin(1)"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("sqrt"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("sqrt()"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("sqrt(9"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("sqrt(4) 2"), std::invalid_argument);
+TEST_CASE("Parser reports positions for invalid operator and parenthesis usage")
+{
+    requireSyntaxError("2**3", 2, "Expected expression");
+    requireSyntaxError("2+", 2, "Expected expression");
+    requireSyntaxError("2^-", 3, "Expected expression");
+    requireSyntaxError("(2+3", 4, "Expected ')'");
+    requireSyntaxError("2+3)", 3, "Unexpected token ')' after expression");
+    requireSyntaxError("()", 1, "Expected expression");
+    requireSyntaxError("2 3", 2, "Unexpected token '3' after expression");
+    requireSyntaxError("+2", 0, "Expected expression");
+    requireSyntaxError("++2", 0, "Expected expression");
 }

@@ -1,5 +1,7 @@
 #include "Parser.h"
 
+#include "CalculatorError.h"
+
 #include <memory>
 #include <stdexcept>
 
@@ -14,14 +16,15 @@ namespace Calculator
     {
         if (tokens.empty())
         {
-            throw std::invalid_argument("Expected an expression");
+            throwSyntaxError("Expected expression");
         }
 
         Expression result = parseExpression();
 
         if (current != tokens.size())
         {
-            throw std::invalid_argument("Unexpected token after expression");
+            throwSyntaxError("Unexpected token '" + tokens[current].value +
+                             "' after expression");
         }
 
         return result;
@@ -50,6 +53,8 @@ namespace Calculator
 
             current++;
 
+            const std::size_t position = tokens[current - 1].position;
+
             Expression right = parseTerm();
 
             left = {
@@ -57,7 +62,11 @@ namespace Calculator
                 0,
                 operation,
                 std::make_unique<Expression>(std::move(left)),
-                std::make_unique<Expression>(std::move(right))
+                std::make_unique<Expression>(std::move(right)),
+                UnaryOperator::Negate,
+                Function::SquareRoot,
+                nullptr,
+                position
             };
         }
 
@@ -87,6 +96,8 @@ namespace Calculator
 
             current++;
 
+            const std::size_t position = tokens[current - 1].position;
+
             Expression right = parseUnary();
 
             left = {
@@ -94,7 +105,11 @@ namespace Calculator
                 0,
                 operation,
                 std::make_unique<Expression>(std::move(left)),
-                std::make_unique<Expression>(std::move(right))
+                std::make_unique<Expression>(std::move(right)),
+                UnaryOperator::Negate,
+                Function::SquareRoot,
+                nullptr,
+                position
             };
         }
 
@@ -105,6 +120,7 @@ namespace Calculator
     {
         if (current < tokens.size() && tokens[current].type == TokenType::Minus)
         {
+            const std::size_t position = tokens[current].position;
             current++;
 
             Expression operand = parseUnary();
@@ -117,7 +133,8 @@ namespace Calculator
                 nullptr,
                 UnaryOperator::Negate,
                 Function::SquareRoot,
-                std::make_unique<Expression>(std::move(operand))
+                std::make_unique<Expression>(std::move(operand)),
+                position
             };
         }
 
@@ -131,6 +148,7 @@ namespace Calculator
         if (current < tokens.size() &&
             tokens[current].type == TokenType::Power)
         {
+            const std::size_t position = tokens[current].position;
             current++;
 
             Expression right = parseUnary();
@@ -140,7 +158,11 @@ namespace Calculator
                 0,
                 Operator::Power,
                 std::make_unique<Expression>(std::move(left)),
-                std::make_unique<Expression>(std::move(right))
+                std::make_unique<Expression>(std::move(right)),
+                UnaryOperator::Negate,
+                Function::SquareRoot,
+                nullptr,
+                position
             };
         }
 
@@ -151,14 +173,22 @@ namespace Calculator
     {
         if (current >= tokens.size())
         {
-            throw std::invalid_argument("Expected a number or '('");
+            throwSyntaxError("Expected expression");
         }
 
         if (tokens[current].type == TokenType::Number)
         {
+            const std::size_t position = tokens[current].position;
             Expression result{
                 ExpressionType::Number,
-                std::stod(tokens[current].value)
+                std::stod(tokens[current].value),
+                Operator::Add,
+                nullptr,
+                nullptr,
+                UnaryOperator::Negate,
+                Function::SquareRoot,
+                nullptr,
+                position
             };
 
             current++;
@@ -168,18 +198,23 @@ namespace Calculator
 
         if (tokens[current].type == TokenType::Function)
         {
+            const std::size_t position = tokens[current].position;
             const std::string functionName = tokens[current].value;
             current++;
 
             if (functionName != "sqrt")
             {
-                throw std::invalid_argument("Unsupported function: " + functionName);
+                throw CalculatorError(
+                    ErrorCategory::Syntax,
+                    position,
+                    "Unsupported function '" + functionName + "'"
+                );
             }
 
             if (current >= tokens.size() ||
                 tokens[current].type != TokenType::LeftParenthesis)
             {
-                throw std::invalid_argument("Expected '(' after function name");
+                throwSyntaxError("Expected '(' after function name");
             }
 
             current++;
@@ -189,7 +224,7 @@ namespace Calculator
             if (current >= tokens.size() ||
                 tokens[current].type != TokenType::RightParenthesis)
             {
-                throw std::invalid_argument("Expected ')' after function argument");
+                throwSyntaxError("Expected ')'");
             }
 
             current++;
@@ -202,7 +237,8 @@ namespace Calculator
                 nullptr,
                 UnaryOperator::Negate,
                 Function::SquareRoot,
-                std::make_unique<Expression>(std::move(operand))
+                std::make_unique<Expression>(std::move(operand)),
+                position
             };
         }
 
@@ -215,7 +251,7 @@ namespace Calculator
             if (current >= tokens.size() ||
                 tokens[current].type != TokenType::RightParenthesis)
             {
-                throw std::invalid_argument("Expected ')'");
+                throwSyntaxError("Expected ')'");
             }
 
             current++;
@@ -223,6 +259,27 @@ namespace Calculator
             return result;
         }
 
-        throw std::invalid_argument("Expected a number, function, or '('");
+        throwSyntaxError("Expected expression");
+    }
+
+    std::size_t Parser::errorPosition() const
+    {
+        if (current < tokens.size())
+        {
+            return tokens[current].position;
+        }
+
+        if (tokens.empty())
+        {
+            return 0;
+        }
+
+        const Token& lastToken = tokens.back();
+        return lastToken.position + lastToken.value.length();
+    }
+
+    void Parser::throwSyntaxError(const std::string& description) const
+    {
+        throw CalculatorError(ErrorCategory::Syntax, errorPosition(), description);
     }
 }

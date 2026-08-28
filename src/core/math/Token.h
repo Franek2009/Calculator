@@ -1,6 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <cstddef>
 #include <string>
 
 namespace Calculator
@@ -25,6 +26,7 @@ namespace Calculator
     {
         TokenType type;
         std::string value;
+        std::size_t position;
     };
 }
 

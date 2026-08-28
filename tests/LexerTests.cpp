@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
+
+#include "../src/core/math/CalculatorError.h"
 #include "../src/core/math/Lexer.h"
 
 TEST_CASE("Lexer recognizes basic arithmetic")
@@ -12,12 +14,15 @@ TEST_CASE("Lexer recognizes basic arithmetic")
 
     REQUIRE(tokens[0].type == Calculator::TokenType::Number);
     REQUIRE(tokens[0].value == "2");
+    REQUIRE(tokens[0].position == 0);
 
     REQUIRE(tokens[1].type == Calculator::TokenType::Plus);
     REQUIRE(tokens[1].value == "+");
+    REQUIRE(tokens[1].position == 1);
 
     REQUIRE(tokens[2].type == Calculator::TokenType::Number);
     REQUIRE(tokens[2].value == "3");
+    REQUIRE(tokens[2].position == 2);
 }
 TEST_CASE("Lexer recognizes decimal numbers"){
     Calculator::Lexer lexer("2.5+3.7");
@@ -64,13 +69,35 @@ TEST_CASE("Lexer recognizes a function")
 
     REQUIRE(tokens[0].type == Calculator::TokenType::Function);
     REQUIRE(tokens[0].value == "sqrt");
+    REQUIRE(tokens[0].position == 0);
 
     REQUIRE(tokens[1].type == Calculator::TokenType::LeftParenthesis);
     REQUIRE(tokens[1].value == "(");
+    REQUIRE(tokens[1].position == 4);
 
     REQUIRE(tokens[2].type == Calculator::TokenType::Number);
     REQUIRE(tokens[2].value == "16");
+    REQUIRE(tokens[2].position == 5);
 
     REQUIRE(tokens[3].type == Calculator::TokenType::RightParenthesis);
     REQUIRE(tokens[3].value == ")");
+    REQUIRE(tokens[3].position == 7);
+}
+
+TEST_CASE("Lexer reports the position of an unknown character")
+{
+    Calculator::Lexer lexer("2@3");
+
+    try
+    {
+        lexer.tokenize();
+        FAIL("Expected a lexical error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Lexical);
+        REQUIRE(error.position() == 1);
+        REQUIRE(std::string(error.what()) ==
+                "Lexical error at position 2: Unknown character '@'");
+    }
 }

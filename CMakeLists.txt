@@ -9,6 +9,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 add_library(CalculatorCore STATIC
     src/core/math/BasicOperations.cpp
+    src/core/math/CalculatorError.cpp
     src/core/math/Lexer.cpp
     src/core/math/Parser.cpp
     src/core/math/Evaluator.cpp

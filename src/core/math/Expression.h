@@ -2,6 +2,7 @@
 #define EXPRESSION_H
 
 #include <memory>
+#include <cstddef>
 
 namespace Calculator
 {
@@ -45,6 +46,8 @@ namespace Calculator
         UnaryOperator unaryOperation;
         Function function;
         std::unique_ptr<Expression> operand;
+
+        std::size_t position;
     };
 }
 

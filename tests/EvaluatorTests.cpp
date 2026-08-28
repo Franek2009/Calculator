@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "../src/core/math/CalculatorError.h"
 #include "../src/core/math/Evaluator.h"
 
 namespace
@@ -122,10 +123,25 @@ TEST_CASE("Evaluator rejects binary expressions with a missing operand")
         0,
         Calculator::Operator::Add,
         nullptr,
-        nullptr
+        nullptr,
+        Calculator::UnaryOperator::Negate,
+        Calculator::Function::SquareRoot,
+        nullptr,
+        5
     };
 
-    REQUIRE_THROWS_AS(evaluator.evaluate(expression), std::invalid_argument);
+    try
+    {
+        evaluator.evaluate(expression);
+        FAIL("Expected an evaluation error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+        REQUIRE(error.position() == 5);
+        REQUIRE(std::string(error.what()) ==
+                "Evaluation error at position 6: Binary operation requires two operands");
+    }
 }
 
 TEST_CASE("Evaluator evaluates unary negation and square root")
