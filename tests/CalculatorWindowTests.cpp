@@ -16,6 +16,8 @@ private slots:
     void calculatesExpressionWithButton();
     void insertsTextAtTheCursorAndReplacesASelection();
     void insertsFunctionsWithExpectedCursorPlacement();
+    void scientificLabelsInsertParserSyntax();
+    void powerAndSquareButtonsUseExistingGrammar();
     void insertsPiAtTheCursor();
     void screenBackspaceMatchesLineEditBehavior();
     void switchesMutuallyExclusiveKeypadModesWithoutLosingInput();
@@ -142,6 +144,99 @@ void CalculatorWindowTests::insertsFunctionsWithExpectedCursorPlacement()
     QVERIFY(!input->hasSelectedText());
 }
 
+void CalculatorWindowTests::scientificLabelsInsertParserSyntax()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* sqrtButton = window.findChild<QPushButton*>("sqrtButton");
+    auto* logarithmButton = window.findChild<QPushButton*>("log10Button");
+    auto* absoluteValueButton = window.findChild<QPushButton*>("absButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(sqrtButton);
+    QVERIFY(logarithmButton);
+    QVERIFY(absoluteValueButton);
+
+    QCOMPARE(sqrtButton->text(), QStringLiteral("√x"));
+    QCOMPARE(logarithmButton->text(), QStringLiteral("log₁₀"));
+    QCOMPARE(absoluteValueButton->text(), QStringLiteral("|x|"));
+
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+
+    QTest::mouseClick(sqrtButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "sqrt()");
+    QCOMPARE(input->cursorPosition(), 5);
+
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(sqrtButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "sqrt(2+3)");
+    QCOMPARE(input->cursorPosition(), 9);
+
+    input->clear();
+    QTest::mouseClick(logarithmButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "log10()");
+    QCOMPARE(input->cursorPosition(), 6);
+
+    input->clear();
+    QTest::mouseClick(absoluteValueButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "abs()");
+    QCOMPARE(input->cursorPosition(), 4);
+
+    input->setText("-2");
+    input->selectAll();
+    QTest::mouseClick(absoluteValueButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "abs(-2)");
+    QCOMPARE(input->cursorPosition(), 7);
+}
+
+void CalculatorWindowTests::powerAndSquareButtonsUseExistingGrammar()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* basicPowerButton = window.findChild<QPushButton*>("basicPowerButton");
+    auto* functionsPowerButton = window.findChild<QPushButton*>("functionsPowerButton");
+    auto* squareButton = window.findChild<QPushButton*>("squareButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(basicPowerButton);
+    QVERIFY(functionsPowerButton);
+    QVERIFY(squareButton);
+
+    QCOMPARE(basicPowerButton->text(), QStringLiteral("xʸ"));
+    QCOMPARE(functionsPowerButton->text(), QStringLiteral("xʸ"));
+    QCOMPARE(squareButton->text(), QStringLiteral("x²"));
+
+    input->setText("2");
+    QTest::mouseClick(basicPowerButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "2^");
+    QCOMPARE(input->cursorPosition(), 2);
+
+    input->clear();
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(functionsPowerButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "^");
+    QCOMPARE(input->cursorPosition(), 1);
+
+    input->setText("5");
+    QTest::mouseClick(squareButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "5^2");
+    QCOMPARE(input->cursorPosition(), 3);
+
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(squareButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "(2+3)^2");
+    QCOMPARE(input->cursorPosition(), 7);
+    QVERIFY(!input->hasSelectedText());
+}
+
 void CalculatorWindowTests::insertsPiAtTheCursor()
 {
     CalculatorUI::CalculatorWindow window;
@@ -153,6 +248,7 @@ void CalculatorWindowTests::insertsPiAtTheCursor()
     QVERIFY(input);
     QVERIFY(functionsMode);
     QVERIFY(piButton);
+    QCOMPARE(piButton->text(), QStringLiteral("π"));
 
     input->setText("2*");
     QTest::mouseClick(functionsMode, Qt::LeftButton);

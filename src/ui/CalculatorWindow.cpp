@@ -244,6 +244,20 @@ namespace CalculatorUI
         expressionInput->setFocus();
     }
 
+    void CalculatorWindow::insertSquare()
+    {
+        if (expressionInput->hasSelectedText())
+        {
+            expressionInput->insert("(" + expressionInput->selectedText() + ")^2");
+        }
+        else
+        {
+            expressionInput->insert("^2");
+        }
+
+        expressionInput->setFocus();
+    }
+
     void CalculatorWindow::backspace()
     {
         expressionInput->backspace();
@@ -358,7 +372,7 @@ namespace CalculatorUI
 
         addInsertButton("0", "0", "basic0Button", "digit", 3, 0);
         addInsertButton(".", ".", "basicDecimalButton", "digit", 3, 1);
-        addInsertButton("^", "^", "basicPowerButton", "operator", 3, 2);
+        addInsertButton(QStringLiteral("xʸ"), "^", "basicPowerButton", "operator", 3, 2);
         addInsertButton("+", "+", "basicAddButton", "operator", 3, 3);
 
         auto* clearButton = createKeyButton("Clear", "clearButton", "clear", keypad);
@@ -398,20 +412,21 @@ namespace CalculatorUI
                     [this, text]() { insertText(text); });
             grid->addWidget(button, row, column);
         };
-        const auto addFunctionButton = [this, keypad, grid](const QString& functionName,
+        const auto addFunctionButton = [this, keypad, grid](const QString& label,
+                                                            const QString& functionName,
                                                             const QString& name,
                                                             int row,
                                                             int column)
         {
-            auto* button = createKeyButton(functionName, name, "function", keypad);
+            auto* button = createKeyButton(label, name, "function", keypad);
             connect(button, &QPushButton::clicked, this,
                     [this, functionName]() { insertFunction(functionName); });
             grid->addWidget(button, row, column);
         };
 
-        addFunctionButton("sin", "sinButton", 0, 0);
-        addFunctionButton("cos", "cosButton", 0, 1);
-        addFunctionButton("tan", "tanButton", 0, 2);
+        addFunctionButton("sin", "sin", "sinButton", 0, 0);
+        addFunctionButton("cos", "cos", "cosButton", 0, 1);
+        addFunctionButton("tan", "tan", "tanButton", 0, 2);
         addInsertButton("(", "(", "functionsLeftParenthesisButton", "operator", 0, 3);
         addInsertButton(")", ")", "functionsRightParenthesisButton", "operator", 0, 4);
 
@@ -420,25 +435,26 @@ namespace CalculatorUI
         connect(backspaceButton, &QPushButton::clicked, this, [this]() { backspace(); });
         grid->addWidget(backspaceButton, 0, 5, 1, 2);
 
-        addFunctionButton("abs", "absButton", 1, 0);
-        addFunctionButton("ln", "lnButton", 1, 1);
-        addFunctionButton("log10", "log10Button", 1, 2);
+        addFunctionButton(QStringLiteral("|x|"), "abs", "absButton", 1, 0);
+        addFunctionButton("ln", "ln", "lnButton", 1, 1);
+        addFunctionButton(QStringLiteral("log₁₀"), "log10", "log10Button", 1, 2);
         addInsertButton("7", "7", "functions7Button", "digit", 1, 3);
         addInsertButton("8", "8", "functions8Button", "digit", 1, 4);
         addInsertButton("9", "9", "functions9Button", "digit", 1, 5);
         addInsertButton("/", "/", "functionsDivideButton", "operator", 1, 6);
 
-        addFunctionButton("sqrt", "sqrtButton", 2, 0);
-        addInsertButton("pi", "pi", "piButton", "function", 2, 1);
-        addInsertButton("^", "^", "functionsPowerButton", "operator", 2, 2);
+        addFunctionButton(QStringLiteral("√x"), "sqrt", "sqrtButton", 2, 0);
+        addInsertButton(QStringLiteral("π"), "pi", "piButton", "function", 2, 1);
+        addInsertButton(QStringLiteral("xʸ"), "^", "functionsPowerButton", "operator", 2, 2);
         addInsertButton("4", "4", "functions4Button", "digit", 2, 3);
         addInsertButton("5", "5", "functions5Button", "digit", 2, 4);
         addInsertButton("6", "6", "functions6Button", "digit", 2, 5);
         addInsertButton("*", "*", "functionsMultiplyButton", "operator", 2, 6);
 
-        auto* clearButton = createKeyButton("Clear", "functionsClearButton", "clear", keypad);
-        connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
-        grid->addWidget(clearButton, 3, 0);
+        auto* squareButton = createKeyButton(QStringLiteral("x²"), "squareButton", "function",
+                                             keypad);
+        connect(squareButton, &QPushButton::clicked, this, [this]() { insertSquare(); });
+        grid->addWidget(squareButton, 3, 0);
         addInsertButton("0", "0", "functions0Button", "digit", 3, 1);
         addInsertButton(".", ".", "functionsDecimalButton", "digit", 3, 2);
         addInsertButton("1", "1", "functions1Button", "digit", 3, 3);
@@ -446,11 +462,15 @@ namespace CalculatorUI
         addInsertButton("3", "3", "functions3Button", "digit", 3, 5);
         addInsertButton("-", "-", "functionsSubtractButton", "operator", 3, 6);
 
+        auto* clearButton = createKeyButton("Clear", "functionsClearButton", "clear", keypad);
+        connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
+        grid->addWidget(clearButton, 4, 0);
+
         auto* calculateButton = createKeyButton("=", "functionsCalculateButton", "calculate",
                                                 keypad);
         connect(calculateButton, &QPushButton::clicked, this,
                 [this]() { calculateExpression(); });
-        grid->addWidget(calculateButton, 4, 0, 1, 6);
+        grid->addWidget(calculateButton, 4, 1, 1, 5);
         addInsertButton("+", "+", "functionsAddButton", "operator", 4, 6);
 
         for (int column = 0; column < 7; ++column)

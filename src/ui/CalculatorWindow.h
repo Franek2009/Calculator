@@ -30,6 +30,7 @@ namespace CalculatorUI
         void clearMessage();
         void insertText(const QString& text);
         void insertFunction(const QString& functionName);
+        void insertSquare();
         void backspace();
         void switchToBasicMode();
         void switchToFunctionsMode();
