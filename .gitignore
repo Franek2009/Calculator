@@ -1,1 +1,30 @@
-build/
+# CMake build trees and generated files
+/build/
+/build-*/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+Testing/
+*_autogen/
+.qt/
+
+# Compiled artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Local IDE and editor files
+.idea/
+.vscode/
+*.user
+*.user.*
+*.swp
+*.swo
+*~
