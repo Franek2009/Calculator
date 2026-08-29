@@ -4,6 +4,9 @@
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTest>
+#include <QWidget>
+
+#include <algorithm>
 
 #include "../src/ui/CalculatorWindow.h"
 
@@ -40,6 +43,7 @@ private slots:
     void ansTooltipsTrackTheLastSuccessfulResult();
     void screenBackspaceMatchesLineEditBehavior();
     void switchesMutuallyExclusiveKeypadModesWithoutLosingInput();
+    void scientificCategoriesSwitchWithoutChangingInputOrGeometry();
     void clearsStaleMessageOnlyWhenTextChanges();
     void selectsAnInExpressionError();
     void placesCursorAtEndForEofError();
@@ -77,9 +81,9 @@ void CalculatorWindowTests::insertsDigitsAndOperatorsWithButtons()
     CalculatorUI::CalculatorWindow window;
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
-    auto* twoButton = window.findChild<QPushButton*>("basic2Button");
-    auto* addButton = window.findChild<QPushButton*>("basicAddButton");
-    auto* threeButton = window.findChild<QPushButton*>("basic3Button");
+    auto* twoButton = window.findChild<QPushButton*>("keypad2Button");
+    auto* addButton = window.findChild<QPushButton*>("addButton");
+    auto* threeButton = window.findChild<QPushButton*>("keypad3Button");
 
     QVERIFY(input);
     QVERIFY(twoButton);
@@ -118,8 +122,8 @@ void CalculatorWindowTests::insertsTextAtTheCursorAndReplacesASelection()
     CalculatorUI::CalculatorWindow window;
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
-    auto* addButton = window.findChild<QPushButton*>("basicAddButton");
-    auto* nineButton = window.findChild<QPushButton*>("basic9Button");
+    auto* addButton = window.findChild<QPushButton*>("addButton");
+    auto* nineButton = window.findChild<QPushButton*>("keypad9Button");
 
     QVERIFY(input);
     QVERIFY(addButton);
@@ -172,18 +176,25 @@ void CalculatorWindowTests::scientificLabelsInsertParserSyntax()
     auto* sqrtButton = window.findChild<QPushButton*>("sqrtButton");
     auto* logarithmButton = window.findChild<QPushButton*>("log10Button");
     auto* absoluteValueButton = window.findChild<QPushButton*>("absButton");
+    auto* logsCategory = window.findChild<QPushButton*>("logsCategoryButton");
+    auto* powersCategory = window.findChild<QPushButton*>("powersCategoryButton");
+    auto* moreCategory = window.findChild<QPushButton*>("moreCategoryButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
     QVERIFY(sqrtButton);
     QVERIFY(logarithmButton);
     QVERIFY(absoluteValueButton);
+    QVERIFY(logsCategory);
+    QVERIFY(powersCategory);
+    QVERIFY(moreCategory);
 
     QCOMPARE(sqrtButton->text(), QStringLiteral("√x"));
     QCOMPARE(logarithmButton->text(), QStringLiteral("log₁₀"));
     QCOMPARE(absoluteValueButton->text(), QStringLiteral("|x|"));
 
     QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(powersCategory, Qt::LeftButton);
 
     QTest::mouseClick(sqrtButton, Qt::LeftButton);
     QCOMPARE(input->text(), "sqrt()");
@@ -196,11 +207,13 @@ void CalculatorWindowTests::scientificLabelsInsertParserSyntax()
     QCOMPARE(input->cursorPosition(), 9);
 
     input->clear();
+    QTest::mouseClick(logsCategory, Qt::LeftButton);
     QTest::mouseClick(logarithmButton, Qt::LeftButton);
     QCOMPARE(input->text(), "log10()");
     QCOMPARE(input->cursorPosition(), 6);
 
     input->clear();
+    QTest::mouseClick(moreCategory, Qt::LeftButton);
     QTest::mouseClick(absoluteValueButton, Qt::LeftButton);
     QCOMPARE(input->text(), "abs()");
     QCOMPARE(input->cursorPosition(), 4);
@@ -337,6 +350,8 @@ void CalculatorWindowTests::utilityButtonsInsertExpectedSyntax()
     auto* reciprocalButton = window.findChild<QPushButton*>("reciprocalButton");
     auto* cubeButton = window.findChild<QPushButton*>("cubeButton");
     auto* squareButton = window.findChild<QPushButton*>("squareButton");
+    auto* powersCategory = window.findChild<QPushButton*>("powersCategoryButton");
+    auto* moreCategory = window.findChild<QPushButton*>("moreCategoryButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
@@ -345,7 +360,10 @@ void CalculatorWindowTests::utilityButtonsInsertExpectedSyntax()
     QVERIFY(reciprocalButton);
     QVERIFY(cubeButton);
     QVERIFY(squareButton);
+    QVERIFY(powersCategory);
+    QVERIFY(moreCategory);
     QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(moreCategory, Qt::LeftButton);
 
     input->setText("5");
     input->setCursorPosition(1);
@@ -358,6 +376,7 @@ void CalculatorWindowTests::utilityButtonsInsertExpectedSyntax()
     QCOMPARE(input->text(), "(2+3)%");
 
     input->clear();
+    QTest::mouseClick(powersCategory, Qt::LeftButton);
     QTest::mouseClick(reciprocalButton, Qt::LeftButton);
     QCOMPARE(input->text(), "1/()");
     QCOMPARE(input->cursorPosition(), 3);
@@ -430,31 +449,31 @@ void CalculatorWindowTests::powerAndSquareButtonsUseExistingGrammar()
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
     auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
-    auto* basicPowerButton = window.findChild<QPushButton*>("basicPowerButton");
-    auto* functionsPowerButton = window.findChild<QPushButton*>("functionsPowerButton");
+    auto* powerButton = window.findChild<QPushButton*>("powerButton");
     auto* squareButton = window.findChild<QPushButton*>("squareButton");
+    auto* powersCategory = window.findChild<QPushButton*>("powersCategoryButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
-    QVERIFY(basicPowerButton);
-    QVERIFY(functionsPowerButton);
+    QVERIFY(powerButton);
     QVERIFY(squareButton);
+    QVERIFY(powersCategory);
 
-    QCOMPARE(basicPowerButton->text(), QStringLiteral("xʸ"));
-    QCOMPARE(functionsPowerButton->text(), QStringLiteral("xʸ"));
+    QCOMPARE(powerButton->text(), QStringLiteral("xʸ"));
     QCOMPARE(squareButton->text(), QStringLiteral("x²"));
 
     input->setText("2");
-    QTest::mouseClick(basicPowerButton, Qt::LeftButton);
+    QTest::mouseClick(powerButton, Qt::LeftButton);
     QCOMPARE(input->text(), "2^");
     QCOMPARE(input->cursorPosition(), 2);
 
     input->clear();
     QTest::mouseClick(functionsMode, Qt::LeftButton);
-    QTest::mouseClick(functionsPowerButton, Qt::LeftButton);
+    QTest::mouseClick(powerButton, Qt::LeftButton);
     QCOMPARE(input->text(), "^");
     QCOMPARE(input->cursorPosition(), 1);
 
+    QTest::mouseClick(powersCategory, Qt::LeftButton);
     input->setText("5");
     QTest::mouseClick(squareButton, Qt::LeftButton);
     QCOMPARE(input->text(), "5^2");
@@ -475,14 +494,17 @@ void CalculatorWindowTests::insertsPiAtTheCursor()
     auto* input = window.findChild<QLineEdit*>("expressionInput");
     auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
     auto* piButton = window.findChild<QPushButton*>("piButton");
+    auto* moreCategory = window.findChild<QPushButton*>("moreCategoryButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
     QVERIFY(piButton);
+    QVERIFY(moreCategory);
     QCOMPARE(piButton->text(), QStringLiteral("π"));
 
     input->setText("2*");
     QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(moreCategory, Qt::LeftButton);
     QTest::mouseClick(piButton, Qt::LeftButton);
 
     QCOMPARE(input->text(), "2*pi");
@@ -497,20 +519,26 @@ void CalculatorWindowTests::insertsEAndGeneralLogarithmSyntax()
     auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
     auto* eButton = window.findChild<QPushButton*>("eButton");
     auto* logButton = window.findChild<QPushButton*>("logButton");
+    auto* logsCategory = window.findChild<QPushButton*>("logsCategoryButton");
+    auto* moreCategory = window.findChild<QPushButton*>("moreCategoryButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
     QVERIFY(eButton);
     QVERIFY(logButton);
+    QVERIFY(logsCategory);
+    QVERIFY(moreCategory);
     QCOMPARE(eButton->text(), "e");
     QCOMPARE(logButton->text(), "log");
 
     QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(moreCategory, Qt::LeftButton);
     QTest::mouseClick(eButton, Qt::LeftButton);
     QCOMPARE(input->text(), "e");
     QCOMPARE(input->cursorPosition(), 1);
 
     input->clear();
+    QTest::mouseClick(logsCategory, Qt::LeftButton);
     QTest::mouseClick(logButton, Qt::LeftButton);
     QCOMPARE(input->text(), "log(, )");
     QCOMPARE(input->cursorPosition(), 4);
@@ -567,27 +595,25 @@ void CalculatorWindowTests::ansButtonsInsertTheAnswerSymbol()
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
     auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
-    auto* basicAnsButton = window.findChild<QPushButton*>("basicAnsButton");
-    auto* functionsAnsButton = window.findChild<QPushButton*>("functionsAnsButton");
+    auto* ansButton = window.findChild<QPushButton*>("ansButton");
 
     QVERIFY(input);
     QVERIFY(functionsMode);
-    QVERIFY(basicAnsButton);
-    QVERIFY(functionsAnsButton);
+    QVERIFY(ansButton);
 
-    QTest::mouseClick(basicAnsButton, Qt::LeftButton);
+    QTest::mouseClick(ansButton, Qt::LeftButton);
     QCOMPARE(input->text(), "Ans");
     QCOMPARE(input->cursorPosition(), 3);
 
     input->setText("2*3");
     input->setSelection(2, 1);
-    QTest::mouseClick(basicAnsButton, Qt::LeftButton);
+    QTest::mouseClick(ansButton, Qt::LeftButton);
     QCOMPARE(input->text(), "2*Ans");
     QCOMPARE(input->cursorPosition(), 5);
 
     input->clear();
     QTest::mouseClick(functionsMode, Qt::LeftButton);
-    QTest::mouseClick(functionsAnsButton, Qt::LeftButton);
+    QTest::mouseClick(ansButton, Qt::LeftButton);
     QCOMPARE(input->text(), "Ans");
     QCOMPARE(input->cursorPosition(), 3);
 }
@@ -889,7 +915,7 @@ void CalculatorWindowTests::historyAdjustsMinimumWidthWithoutResizeDrift()
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
     auto* historyButton = window.findChild<QPushButton*>("historyButton");
-    auto* basicButton = window.findChild<QPushButton*>("basic7Button");
+    auto* basicButton = window.findChild<QPushButton*>("keypad7Button");
 
     QVERIFY(input);
     QVERIFY(historyButton);
@@ -914,30 +940,25 @@ void CalculatorWindowTests::ansTooltipsTrackTheLastSuccessfulResult()
     CalculatorUI::CalculatorWindow window;
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
-    auto* basicAnsButton = window.findChild<QPushButton*>("basicAnsButton");
-    auto* functionsAnsButton = window.findChild<QPushButton*>("functionsAnsButton");
+    auto* ansButton = window.findChild<QPushButton*>("ansButton");
     auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
     auto* clearHistoryButton = window.findChild<QPushButton*>("clearHistoryButton");
 
     QVERIFY(input);
-    QVERIFY(basicAnsButton);
-    QVERIFY(functionsAnsButton);
+    QVERIFY(ansButton);
     QVERIFY(degreesButton);
     QVERIFY(clearHistoryButton);
-    QCOMPARE(basicAnsButton->toolTip(), "Ans is not available yet");
-    QCOMPARE(functionsAnsButton->toolTip(), "Ans is not available yet");
+    QCOMPARE(ansButton->toolTip(), "Ans is not available yet");
 
     input->setText("2+3");
     QTest::keyClick(input, Qt::Key_Return);
-    QCOMPARE(basicAnsButton->toolTip(), "Insert Ans (Ans = 5)");
-    QCOMPARE(functionsAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+    QCOMPARE(ansButton->toolTip(), "Insert Ans (Ans = 5)");
 
     input->setText("1/0");
     QTest::keyClick(input, Qt::Key_Return);
     QTest::mouseClick(degreesButton, Qt::LeftButton);
     QTest::mouseClick(clearHistoryButton, Qt::LeftButton);
-    QCOMPARE(basicAnsButton->toolTip(), "Insert Ans (Ans = 5)");
-    QCOMPARE(functionsAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+    QCOMPARE(ansButton->toolTip(), "Insert Ans (Ans = 5)");
     QVERIFY(input->hasFocus());
 }
 
@@ -946,7 +967,7 @@ void CalculatorWindowTests::screenBackspaceMatchesLineEditBehavior()
     CalculatorUI::CalculatorWindow window;
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
-    auto* backspaceButton = window.findChild<QPushButton*>("basicBackspaceButton");
+    auto* backspaceButton = window.findChild<QPushButton*>("backspaceButton");
 
     QVERIFY(input);
     QVERIFY(backspaceButton);
@@ -969,32 +990,127 @@ void CalculatorWindowTests::switchesMutuallyExclusiveKeypadModesWithoutLosingInp
     CalculatorUI::CalculatorWindow window;
     showWindow(window);
     auto* input = window.findChild<QLineEdit*>("expressionInput");
-    auto* stack = window.findChild<QStackedWidget*>("keypadStack");
+    auto* shelf = window.findChild<QWidget*>("scientificShelf");
+    auto* keypad = window.findChild<QWidget*>("sharedKeypad");
+    auto* sevenButton = window.findChild<QPushButton*>("keypad7Button");
     auto* basicMode = window.findChild<QPushButton*>("basicModeButton");
     auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
 
     QVERIFY(input);
-    QVERIFY(stack);
+    QVERIFY(shelf);
+    QVERIFY(keypad);
+    QVERIFY(sevenButton);
     QVERIFY(basicMode);
     QVERIFY(functionsMode);
+    QCOMPARE(window.findChildren<QPushButton*>("keypad7Button").size(), 1);
 
     input->setText("2+2");
+    input->setSelection(2, 1);
     QVERIFY(basicMode->isChecked());
     QVERIFY(!functionsMode->isChecked());
-    QCOMPARE(stack->currentIndex(), 0);
+    QVERIFY(!shelf->isVisible());
+    QVERIFY(keypad->isVisible());
 
     QTest::mouseClick(functionsMode, Qt::LeftButton);
     QVERIFY(!basicMode->isChecked());
     QVERIFY(functionsMode->isChecked());
-    QCOMPARE(stack->currentIndex(), 1);
+    QVERIFY(shelf->isVisible());
+    QVERIFY(keypad->isVisible());
     QCOMPARE(input->text(), "2+2");
+    QCOMPARE(input->selectionStart(), 2);
+    QCOMPARE(input->selectedText(), "2");
+
+    input->setCursorPosition(input->text().size());
+    QTest::mouseClick(sevenButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "2+27");
 
     QTest::mouseClick(basicMode, Qt::LeftButton);
     QVERIFY(basicMode->isChecked());
     QVERIFY(!functionsMode->isChecked());
-    QCOMPARE(stack->currentIndex(), 0);
-    QCOMPARE(input->text(), "2+2");
+    QVERIFY(!shelf->isVisible());
+    QVERIFY(keypad->isVisible());
+    QCOMPARE(input->text(), "2+27");
     QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::scientificCategoriesSwitchWithoutChangingInputOrGeometry()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* shelf = window.findChild<QWidget*>("scientificShelf");
+    auto* stack = window.findChild<QStackedWidget*>("scientificStack");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* basicMode = window.findChild<QPushButton*>("basicModeButton");
+    auto* radiansButton = window.findChild<QPushButton*>("radiansButton");
+    auto* trig = window.findChild<QPushButton*>("trigCategoryButton");
+    auto* logs = window.findChild<QPushButton*>("logsCategoryButton");
+    auto* powers = window.findChild<QPushButton*>("powersCategoryButton");
+    auto* more = window.findChild<QPushButton*>("moreCategoryButton");
+    auto* trigPage = window.findChild<QWidget*>("trigPage");
+    auto* logsPage = window.findChild<QWidget*>("logsPage");
+    auto* powersPage = window.findChild<QWidget*>("powersPage");
+    auto* morePage = window.findChild<QWidget*>("morePage");
+
+    QVERIFY(input);
+    QVERIFY(shelf);
+    QVERIFY(stack);
+    QVERIFY(functionsMode);
+    QVERIFY(basicMode);
+    QVERIFY(radiansButton);
+    QVERIFY(trig);
+    QVERIFY(logs);
+    QVERIFY(powers);
+    QVERIFY(more);
+    QVERIFY(trigPage);
+    QVERIFY(logsPage);
+    QVERIFY(powersPage);
+    QVERIFY(morePage);
+    QCOMPARE(trig->focusPolicy(), Qt::NoFocus);
+    QCOMPARE(logs->focusPolicy(), Qt::NoFocus);
+    QCOMPARE(powers->focusPolicy(), Qt::NoFocus);
+    QCOMPARE(more->focusPolicy(), Qt::NoFocus);
+    QVERIFY(trig->isChecked());
+    QCOMPARE(stack->currentIndex(), 0);
+
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QVERIFY(trigPage->isVisible());
+    QVERIFY(!logsPage->isVisible());
+    QVERIFY(!powersPage->isVisible());
+    QVERIFY(!morePage->isVisible());
+    const int shelfHeight = shelf->height();
+    const int windowHeight = window.height();
+    input->setText("12+34");
+    input->setSelection(3, 2);
+
+    const QList<QPushButton*> categories{logs, powers, more, trig};
+    for (int index = 0; index < categories.size(); ++index)
+    {
+        QTest::mouseClick(categories[index], Qt::LeftButton);
+        QCOMPARE(stack->currentIndex(), (index + 1) % 4);
+        QCOMPARE(std::count_if(categories.cbegin(), categories.cend(),
+                               [](const QPushButton* button) { return button->isChecked(); }), 1);
+        QCOMPARE(input->text(), "12+34");
+        QCOMPARE(input->selectionStart(), 3);
+        QCOMPARE(input->selectedText(), "34");
+        QCOMPARE(shelf->height(), shelfHeight);
+        QCOMPARE(window.height(), windowHeight);
+        QVERIFY(radiansButton->isChecked());
+        QVERIFY(input->hasFocus());
+    }
+
+    QTest::mouseClick(more, Qt::LeftButton);
+    input->setSelection(0, 2);
+    QTest::mouseClick(basicMode, Qt::LeftButton);
+    QVERIFY(!shelf->isVisible());
+    QCOMPARE(input->selectionStart(), 0);
+    QCOMPARE(input->selectedText(), "12");
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QVERIFY(shelf->isVisible());
+    QVERIFY(more->isChecked());
+    QCOMPARE(stack->currentIndex(), 3);
+    QCOMPARE(input->selectionStart(), 0);
+    QCOMPARE(input->selectedText(), "12");
 }
 
 void CalculatorWindowTests::clearsStaleMessageOnlyWhenTextChanges()

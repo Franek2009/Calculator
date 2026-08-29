@@ -14,7 +14,7 @@ A compact desktop scientific calculator built with C++20 and Qt 6. It combines a
 - `Ans` for reusing the last successful result
 - Session calculation history with expression, result, and angle mode
 - Source-positioned lexical, syntax, and evaluation diagnostics
-- Basic and Functions keypads in a dark Qt Widgets interface
+- Basic and Functions modes with a shared keypad and categorized scientific controls
 - Full expression entry from the physical keyboard
 
 ## Screenshot

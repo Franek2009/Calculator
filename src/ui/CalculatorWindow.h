@@ -42,6 +42,7 @@ namespace CalculatorUI
         void backspace();
         void switchToBasicMode();
         void switchToFunctionsMode();
+        void switchScientificCategory(int index, QPushButton* categoryButton);
         void switchToRadians();
         void switchToDegrees();
         void toggleHistory(bool visible);
@@ -58,21 +59,21 @@ namespace CalculatorUI
                                      const QString& objectName,
                                      const QString& role,
                                      QWidget* parent);
-        QWidget* createBasicKeypad(QWidget* parent);
-        QWidget* createFunctionsKeypad(QWidget* parent);
+        QWidget* createSharedKeypad(QWidget* parent);
+        QWidget* createScientificShelf(QWidget* parent);
         static int stringIndexForByteOffset(const QString& text, std::size_t byteOffset);
 
         QLineEdit* expressionInput;
         QLabel* messageLabel;
-        QStackedWidget* keypadStack;
+        QWidget* scientificShelf;
+        QStackedWidget* scientificStack;
         QPushButton* basicModeButton;
         QPushButton* functionsModeButton;
         QPushButton* radiansButton;
         QPushButton* degreesButton;
         QPushButton* historyButton;
         QPushButton* clearHistoryButton;
-        QPushButton* basicAnsButton;
-        QPushButton* functionsAnsButton;
+        QPushButton* ansButton;
         QFrame* historyPanel;
         QListWidget* historyList;
         QLabel* historyEmptyLabel;

@@ -13,6 +13,7 @@
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
+#include <QList>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
@@ -26,6 +27,7 @@
 #include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
 #include <QString>
+#include <QStringList>
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QWidget>
@@ -33,6 +35,7 @@
 #include <algorithm>
 #include <exception>
 #include <string>
+#include <tuple>
 
 namespace CalculatorUI
 {
@@ -44,6 +47,8 @@ namespace CalculatorUI
         constexpr int calculatorMaximumWidth = 960;
         constexpr int calculatorMinimumHeight = 560;
         constexpr int keypadButtonMaximumHeight = 72;
+        constexpr int scientificCategoryHeight = 36;
+        constexpr int scientificPageHeight = 56;
         constexpr int expressionRole = Qt::UserRole;
         constexpr int resultRole = Qt::UserRole + 1;
         constexpr int angleModeRole = Qt::UserRole + 2;
@@ -334,15 +339,14 @@ namespace CalculatorUI
         modeLayout->addWidget(radiansButton);
         modeLayout->addWidget(degreesButton);
 
-        keypadStack = new QStackedWidget(centralWidget);
-        keypadStack->setObjectName("keypadStack");
-        keypadStack->addWidget(createBasicKeypad(keypadStack));
-        keypadStack->addWidget(createFunctionsKeypad(keypadStack));
-        keypadStack->setCurrentIndex(0);
+        scientificShelf = createScientificShelf(calculatorPanel);
+        scientificShelf->hide();
+        auto* sharedKeypad = createSharedKeypad(calculatorPanel);
 
         layout->addWidget(displayPanel);
         layout->addLayout(modeLayout);
-        layout->addWidget(keypadStack, 1);
+        layout->addWidget(scientificShelf);
+        layout->addWidget(sharedKeypad, 1);
 
         historyPanel = new QFrame(centralWidget);
         historyPanel->setObjectName("historyPanel");
@@ -564,14 +568,22 @@ namespace CalculatorUI
     void CalculatorWindow::switchToBasicMode()
     {
         basicModeButton->setChecked(true);
-        keypadStack->setCurrentIndex(0);
+        scientificShelf->hide();
         expressionInput->setFocus();
     }
 
     void CalculatorWindow::switchToFunctionsMode()
     {
         functionsModeButton->setChecked(true);
-        keypadStack->setCurrentIndex(1);
+        scientificShelf->show();
+        expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::switchScientificCategory(int index,
+                                                     QPushButton* categoryButton)
+    {
+        categoryButton->setChecked(true);
+        scientificStack->setCurrentIndex(index);
         expressionInput->setFocus();
     }
 
@@ -680,8 +692,7 @@ namespace CalculatorUI
             ? "Insert Ans (Ans = " + QString::number(*lastAnswer, 'g', 15) + ")"
             : "Ans is not available yet";
 
-        basicAnsButton->setToolTip(tooltip);
-        functionsAnsButton->setToolTip(tooltip);
+        ansButton->setToolTip(tooltip);
     }
 
     void CalculatorWindow::showCalculationError(const Calculator::CalculatorError& error)
@@ -735,10 +746,10 @@ namespace CalculatorUI
         return button;
     }
 
-    QWidget* CalculatorWindow::createBasicKeypad(QWidget* parent)
+    QWidget* CalculatorWindow::createSharedKeypad(QWidget* parent)
     {
         auto* keypad = new QWidget(parent);
-        keypad->setObjectName("basicKeypad");
+        keypad->setObjectName("sharedKeypad");
         auto* grid = new QGridLayout(keypad);
         grid->setContentsMargins(0, 0, 0, 0);
         grid->setSpacing(8);
@@ -758,33 +769,33 @@ namespace CalculatorUI
             return button;
         };
 
-        addInsertButton("7", "7", "basic7Button", "digit", 0, 0);
-        addInsertButton("8", "8", "basic8Button", "digit", 0, 1);
-        addInsertButton("9", "9", "basic9Button", "digit", 0, 2);
-        addInsertButton("/", "/", "basicDivideButton", "operator", 0, 3);
+        addInsertButton("7", "7", "keypad7Button", "digit", 0, 0);
+        addInsertButton("8", "8", "keypad8Button", "digit", 0, 1);
+        addInsertButton("9", "9", "keypad9Button", "digit", 0, 2);
+        addInsertButton("/", "/", "divideButton", "operator", 0, 3);
 
-        auto* backspaceButton = createKeyButton("Backspace", "basicBackspaceButton",
+        auto* backspaceButton = createKeyButton("Backspace", "backspaceButton",
                                                 "operator", keypad);
         connect(backspaceButton, &QPushButton::clicked, this, [this]() { backspace(); });
         grid->addWidget(backspaceButton, 0, 4);
 
-        addInsertButton("4", "4", "basic4Button", "digit", 1, 0);
-        addInsertButton("5", "5", "basic5Button", "digit", 1, 1);
-        addInsertButton("6", "6", "basic6Button", "digit", 1, 2);
-        addInsertButton("*", "*", "basicMultiplyButton", "operator", 1, 3);
-        addInsertButton("(", "(", "basicLeftParenthesisButton", "operator", 1, 4);
+        addInsertButton("4", "4", "keypad4Button", "digit", 1, 0);
+        addInsertButton("5", "5", "keypad5Button", "digit", 1, 1);
+        addInsertButton("6", "6", "keypad6Button", "digit", 1, 2);
+        addInsertButton("*", "*", "multiplyButton", "operator", 1, 3);
+        addInsertButton("(", "(", "leftParenthesisButton", "operator", 1, 4);
 
-        addInsertButton("1", "1", "basic1Button", "digit", 2, 0);
-        addInsertButton("2", "2", "basic2Button", "digit", 2, 1);
-        addInsertButton("3", "3", "basic3Button", "digit", 2, 2);
-        addInsertButton("-", "-", "basicSubtractButton", "operator", 2, 3);
-        addInsertButton(")", ")", "basicRightParenthesisButton", "operator", 2, 4);
+        addInsertButton("1", "1", "keypad1Button", "digit", 2, 0);
+        addInsertButton("2", "2", "keypad2Button", "digit", 2, 1);
+        addInsertButton("3", "3", "keypad3Button", "digit", 2, 2);
+        addInsertButton("-", "-", "subtractButton", "operator", 2, 3);
+        addInsertButton(")", ")", "rightParenthesisButton", "operator", 2, 4);
 
-        addInsertButton("0", "0", "basic0Button", "digit", 3, 0);
-        addInsertButton(".", ".", "basicDecimalButton", "digit", 3, 1);
-        addInsertButton(QStringLiteral("xʸ"), "^", "basicPowerButton", "operator", 3, 2);
-        addInsertButton("+", "+", "basicAddButton", "operator", 3, 3);
-        basicAnsButton = addInsertButton("Ans", "Ans", "basicAnsButton", "function", 3, 4);
+        addInsertButton("0", "0", "keypad0Button", "digit", 3, 0);
+        addInsertButton(".", ".", "decimalButton", "digit", 3, 1);
+        addInsertButton(QStringLiteral("xʸ"), "^", "powerButton", "operator", 3, 2);
+        addInsertButton("+", "+", "addButton", "operator", 3, 3);
+        ansButton = addInsertButton("Ans", "Ans", "ansButton", "function", 3, 4);
 
         auto* clearButton = createKeyButton("Clear", "clearButton", "clear", keypad);
         connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
@@ -803,129 +814,124 @@ namespace CalculatorUI
         return keypad;
     }
 
-    QWidget* CalculatorWindow::createFunctionsKeypad(QWidget* parent)
+    QWidget* CalculatorWindow::createScientificShelf(QWidget* parent)
     {
-        auto* keypad = new QWidget(parent);
-        keypad->setObjectName("functionsKeypad");
-        auto* grid = new QGridLayout(keypad);
-        grid->setContentsMargins(0, 0, 0, 0);
-        grid->setSpacing(8);
-        grid->setAlignment(Qt::AlignTop);
+        auto* shelf = new QWidget(parent);
+        shelf->setObjectName("scientificShelf");
+        shelf->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        auto* shelfLayout = new QVBoxLayout(shelf);
+        shelfLayout->setContentsMargins(0, 0, 0, 0);
+        shelfLayout->setSpacing(8);
 
-        const auto addInsertButton = [this, keypad, grid](const QString& label,
-                                                          const QString& text,
-                                                          const QString& name,
-                                                          const QString& role,
-                                                          int row,
-                                                          int column)
+        auto* categoryLayout = new QHBoxLayout;
+        categoryLayout->setSpacing(6);
+        auto* categoryGroup = new QButtonGroup(this);
+        categoryGroup->setExclusive(true);
+        const QStringList categoryLabels{"Trig", "Logs", "Powers", "More"};
+        const QStringList categoryNames{"trigCategoryButton", "logsCategoryButton",
+                                        "powersCategoryButton", "moreCategoryButton"};
+        QList<QPushButton*> categoryButtons;
+        for (int index = 0; index < categoryLabels.size(); ++index)
         {
-            auto* button = createKeyButton(label, name, role, keypad);
+            auto* button = createKeyButton(categoryLabels[index], categoryNames[index],
+                                           "mode", shelf);
+            button->setCheckable(true);
+            button->setFixedHeight(scientificCategoryHeight);
+            categoryGroup->addButton(button);
+            categoryLayout->addWidget(button);
+            categoryButtons.append(button);
             connect(button, &QPushButton::clicked, this,
-                    [this, text]() { insertText(text); });
-            grid->addWidget(button, row, column);
-            return button;
-        };
-        const auto addFunctionButton = [this, keypad, grid](const QString& label,
-                                                            const QString& functionName,
-                                                            const QString& name,
-                                                            int row,
-                                                            int column)
-        {
-            auto* button = createKeyButton(label, name, "function", keypad);
-            connect(button, &QPushButton::clicked, this,
-                    [this, functionName]() { insertFunction(functionName); });
-            grid->addWidget(button, row, column);
-        };
-
-        addFunctionButton("sin", "sin", "sinButton", 0, 0);
-        addFunctionButton("cos", "cos", "cosButton", 0, 1);
-        addFunctionButton("tan", "tan", "tanButton", 0, 2);
-
-        auto* logarithmButton = createKeyButton("log", "logButton", "function", keypad);
-        connect(logarithmButton, &QPushButton::clicked, this,
-                [this]() { insertLogarithm(); });
-        grid->addWidget(logarithmButton, 0, 3);
-
-        addInsertButton("(", "(", "functionsLeftParenthesisButton", "operator", 0, 4);
-        addInsertButton(")", ")", "functionsRightParenthesisButton", "operator", 0, 5);
-
-        auto* backspaceButton = createKeyButton("Backspace", "functionsBackspaceButton",
-                                                "operator", keypad);
-        connect(backspaceButton, &QPushButton::clicked, this, [this]() { backspace(); });
-        grid->addWidget(backspaceButton, 0, 6, 1, 2);
-
-        addFunctionButton(QStringLiteral("sin⁻¹"), "asin", "arcSineButton", 1, 0);
-        addFunctionButton(QStringLiteral("cos⁻¹"), "acos", "arcCosineButton", 1, 1);
-        addFunctionButton(QStringLiteral("tan⁻¹"), "atan", "arcTangentButton", 1, 2);
-
-        auto* factorialButton = createKeyButton("!", "factorialButton", "function", keypad);
-        connect(factorialButton, &QPushButton::clicked, this,
-                [this]() { insertPostfixOperator("!"); });
-        grid->addWidget(factorialButton, 1, 3);
-
-        auto* percentageButton = createKeyButton("%", "percentageButton", "function", keypad);
-        connect(percentageButton, &QPushButton::clicked, this,
-                [this]() { insertPostfixOperator("%"); });
-        grid->addWidget(percentageButton, 1, 4);
-
-        auto* reciprocalButton = createKeyButton("1/x", "reciprocalButton", "function", keypad);
-        connect(reciprocalButton, &QPushButton::clicked, this,
-                [this]() { insertReciprocal(); });
-        grid->addWidget(reciprocalButton, 1, 5);
-
-        auto* cubeButton = createKeyButton(QStringLiteral("x³"), "cubeButton", "function",
-                                           keypad);
-        connect(cubeButton, &QPushButton::clicked, this,
-                [this]() { insertPowerShortcut(3); });
-        grid->addWidget(cubeButton, 1, 6);
-
-        addFunctionButton(QStringLiteral("|x|"), "abs", "absButton", 2, 0);
-        addFunctionButton("ln", "ln", "lnButton", 2, 1);
-        addFunctionButton(QStringLiteral("log₁₀"), "log10", "log10Button", 2, 2);
-        addInsertButton("e", "e", "eButton", "function", 2, 3);
-        addInsertButton("7", "7", "functions7Button", "digit", 2, 4);
-        addInsertButton("8", "8", "functions8Button", "digit", 2, 5);
-        addInsertButton("9", "9", "functions9Button", "digit", 2, 6);
-        addInsertButton("/", "/", "functionsDivideButton", "operator", 2, 7);
-
-        addFunctionButton(QStringLiteral("√x"), "sqrt", "sqrtButton", 3, 0);
-        addInsertButton(QStringLiteral("π"), "pi", "piButton", "function", 3, 1);
-        addInsertButton(QStringLiteral("xʸ"), "^", "functionsPowerButton", "operator", 3, 2);
-        auto* squareButton = createKeyButton(QStringLiteral("x²"), "squareButton", "function",
-                                             keypad);
-        connect(squareButton, &QPushButton::clicked, this,
-                [this]() { insertPowerShortcut(2); });
-        grid->addWidget(squareButton, 3, 3);
-        addInsertButton("4", "4", "functions4Button", "digit", 3, 4);
-        addInsertButton("5", "5", "functions5Button", "digit", 3, 5);
-        addInsertButton("6", "6", "functions6Button", "digit", 3, 6);
-        addInsertButton("*", "*", "functionsMultiplyButton", "operator", 3, 7);
-
-        auto* clearButton = createKeyButton("Clear", "functionsClearButton", "clear", keypad);
-        connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
-        grid->addWidget(clearButton, 4, 0);
-        functionsAnsButton = addInsertButton("Ans", "Ans", "functionsAnsButton", "function",
-                                              4, 1);
-        addInsertButton("0", "0", "functions0Button", "digit", 4, 2);
-        addInsertButton(".", ".", "functionsDecimalButton", "digit", 4, 3);
-        addInsertButton("1", "1", "functions1Button", "digit", 4, 4);
-        addInsertButton("2", "2", "functions2Button", "digit", 4, 5);
-        addInsertButton("3", "3", "functions3Button", "digit", 4, 6);
-        addInsertButton("-", "-", "functionsSubtractButton", "operator", 4, 7);
-
-        auto* calculateButton = createKeyButton("=", "functionsCalculateButton", "calculate",
-                                                keypad);
-        connect(calculateButton, &QPushButton::clicked, this,
-                [this]() { calculateExpression(); });
-        grid->addWidget(calculateButton, 5, 0, 1, 7);
-        addInsertButton("+", "+", "functionsAddButton", "operator", 5, 7);
-
-        for (int column = 0; column < 8; ++column)
-        {
-            grid->setColumnStretch(column, 1);
+                    [this, index, button]() { switchScientificCategory(index, button); });
         }
 
-        return keypad;
+        scientificStack = new QStackedWidget(shelf);
+        scientificStack->setObjectName("scientificStack");
+        scientificStack->setFixedHeight(scientificPageHeight);
+
+        const auto createPage = [this](const QString& name,
+                                       const QList<std::tuple<QString, QString, QString>>& specs)
+        {
+            auto* page = new QWidget(scientificStack);
+            page->setObjectName(name);
+            auto* grid = new QGridLayout(page);
+            grid->setContentsMargins(0, 0, 0, 0);
+            grid->setSpacing(8);
+            for (int index = 0; index < specs.size(); ++index)
+            {
+                const auto& [label, syntax, objectName] = specs[index];
+                auto* button = createKeyButton(label, objectName, "function", page);
+                if (syntax == "log")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertLogarithm(); });
+                }
+                else if (syntax == "!")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertPostfixOperator("!"); });
+                }
+                else if (syntax == "%")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertPostfixOperator("%"); });
+                }
+                else if (syntax == "1/x")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertReciprocal(); });
+                }
+                else if (syntax == "^2")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertPowerShortcut(2); });
+                }
+                else if (syntax == "^3")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this]() { insertPowerShortcut(3); });
+                }
+                else if (syntax == "pi" || syntax == "e")
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this, syntax]() { insertText(syntax); });
+                }
+                else
+                {
+                    connect(button, &QPushButton::clicked, this,
+                            [this, syntax]() { insertFunction(syntax); });
+                }
+                grid->addWidget(button, 0, index);
+                grid->setColumnStretch(index, 1);
+            }
+            return page;
+        };
+
+        scientificStack->addWidget(createPage("trigPage", {
+            {"sin", "sin", "sinButton"}, {"cos", "cos", "cosButton"},
+            {"tan", "tan", "tanButton"}, {QStringLiteral("sin⁻¹"), "asin", "arcSineButton"},
+            {QStringLiteral("cos⁻¹"), "acos", "arcCosineButton"},
+            {QStringLiteral("tan⁻¹"), "atan", "arcTangentButton"}
+        }));
+        scientificStack->addWidget(createPage("logsPage", {
+            {"ln", "ln", "lnButton"}, {QStringLiteral("log₁₀"), "log10", "log10Button"},
+            {"log", "log", "logButton"}
+        }));
+        scientificStack->addWidget(createPage("powersPage", {
+            {QStringLiteral("√x"), "sqrt", "sqrtButton"},
+            {QStringLiteral("x²"), "^2", "squareButton"},
+            {QStringLiteral("x³"), "^3", "cubeButton"}, {"1/x", "1/x", "reciprocalButton"}
+        }));
+        scientificStack->addWidget(createPage("morePage", {
+            {QStringLiteral("|x|"), "abs", "absButton"}, {"!", "!", "factorialButton"},
+            {"%", "%", "percentageButton"}, {QStringLiteral("π"), "pi", "piButton"},
+            {"e", "e", "eButton"}
+        }));
+
+        categoryButtons.front()->setChecked(true);
+        scientificStack->setCurrentIndex(0);
+        shelfLayout->addLayout(categoryLayout);
+        shelfLayout->addWidget(scientificStack);
+        return shelf;
     }
 
     int CalculatorWindow::stringIndexForByteOffset(const QString& text,
