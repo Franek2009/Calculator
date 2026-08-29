@@ -149,3 +149,20 @@ TEST_CASE("Lexer recognizes constants and alphanumeric identifiers")
     REQUIRE(tokens[4].value == "pi");
     REQUIRE(tokens[4].position == 14);
 }
+
+TEST_CASE("Lexer recognizes e, log, and argument separators")
+{
+    Calculator::Lexer lexer("e log(2,8)");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens.size() == 7);
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[0].value == "e");
+    REQUIRE(tokens[0].position == 0);
+    REQUIRE(tokens[1].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[1].value == "log");
+    REQUIRE(tokens[1].position == 2);
+    REQUIRE(tokens[4].type == Calculator::TokenType::Comma);
+    REQUIRE(tokens[4].value == ",");
+    REQUIRE(tokens[4].position == 7);
+}

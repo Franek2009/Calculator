@@ -103,6 +103,10 @@ namespace Calculator
                     tokens.push_back({TokenType::RightParenthesis, ")", i});
                     break;
 
+                case ',':
+                    tokens.push_back({TokenType::Comma, ",", i});
+                    break;
+
                 default:
                     throw CalculatorError(
                         ErrorCategory::Lexical,

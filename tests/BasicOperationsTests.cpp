@@ -63,6 +63,32 @@ TEST_CASE("Absolute value and logarithms work correctly")
     REQUIRE(Calculator::BasicOperations::absoluteValue(-5) == 5);
     REQUIRE(Calculator::BasicOperations::naturalLogarithm(1) == 0);
     REQUIRE(Calculator::BasicOperations::base10Logarithm(100) == 2);
+    REQUIRE(Calculator::BasicOperations::logarithm(2, 8) == 3);
+    REQUIRE(Calculator::BasicOperations::logarithm(3, 81) == 4);
+}
+
+TEST_CASE("Arbitrary-base logarithms validate their domain")
+{
+    const auto requireDomainError = [](double base,
+                                       double value,
+                                       const std::string& description)
+    {
+        try
+        {
+            Calculator::BasicOperations::logarithm(base, value);
+            FAIL("Expected a domain error");
+        }
+        catch (const std::invalid_argument& error)
+        {
+            REQUIRE(std::string(error.what()) == description);
+        }
+    };
+
+    requireDomainError(0, 8, "Logarithm base must be positive");
+    requireDomainError(-2, 8, "Logarithm base must be positive");
+    requireDomainError(1, 8, "Logarithm base must not equal 1");
+    requireDomainError(2, 0, "Logarithm value must be positive");
+    requireDomainError(2, -8, "Logarithm value must be positive");
 }
 
 TEST_CASE("Logarithms reject non-positive arguments")

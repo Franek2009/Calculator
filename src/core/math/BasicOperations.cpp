@@ -84,4 +84,24 @@ namespace Calculator::BasicOperations
 
         return std::log10(number);
     }
+
+    double logarithm(double base, double value)
+    {
+        if (base <= 0)
+        {
+            throw std::invalid_argument("Logarithm base must be positive");
+        }
+
+        if (base == 1)
+        {
+            throw std::invalid_argument("Logarithm base must not equal 1");
+        }
+
+        if (value <= 0)
+        {
+            throw std::invalid_argument("Logarithm value must be positive");
+        }
+
+        return std::log(value) / std::log(base);
+    }
 }

@@ -14,6 +14,7 @@ class QWidget;
 
 namespace Calculator
 {
+    enum class AngleMode;
     class CalculatorError;
 }
 
@@ -30,10 +31,13 @@ namespace CalculatorUI
         void clearMessage();
         void insertText(const QString& text);
         void insertFunction(const QString& functionName);
+        void insertLogarithm();
         void insertSquare();
         void backspace();
         void switchToBasicMode();
         void switchToFunctionsMode();
+        void switchToRadians();
+        void switchToDegrees();
         void showCalculationError(const Calculator::CalculatorError& error);
         void setMessage(const QString& message, const QString& type);
         QPushButton* createKeyButton(const QString& label,
@@ -49,6 +53,9 @@ namespace CalculatorUI
         QStackedWidget* keypadStack;
         QPushButton* basicModeButton;
         QPushButton* functionsModeButton;
+        QPushButton* radiansButton;
+        QPushButton* degreesButton;
+        Calculator::AngleMode angleMode;
     };
 }
 

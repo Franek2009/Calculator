@@ -223,8 +223,10 @@ TEST_CASE("Parser recognizes square root function calls")
     REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
     REQUIRE(result.function == Calculator::Function::SquareRoot);
     REQUIRE(result.position == 0);
-    REQUIRE(result.operand->type == Calculator::ExpressionType::Number);
-    REQUIRE(result.operand->value == 16);
+    REQUIRE(result.operand == nullptr);
+    REQUIRE(result.arguments.size() == 1);
+    REQUIRE(result.arguments[0].type == Calculator::ExpressionType::Number);
+    REQUIRE(result.arguments[0].value == 16);
 }
 
 TEST_CASE("Parser allows an expression as a function argument")
@@ -236,8 +238,8 @@ TEST_CASE("Parser allows an expression as a function argument")
     const auto result = parser.parse();
 
     REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
-    REQUIRE(result.operand->type == Calculator::ExpressionType::BinaryOperation);
-    REQUIRE(result.operand->operation == Calculator::Operator::Add);
+    REQUIRE(result.arguments[0].type == Calculator::ExpressionType::BinaryOperation);
+    REQUIRE(result.arguments[0].operation == Calculator::Operator::Add);
 }
 
 TEST_CASE("Parser recognizes trigonometric function calls")
@@ -252,7 +254,9 @@ TEST_CASE("Parser recognizes trigonometric function calls")
 
         REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
         REQUIRE(result.function == expectedFunction);
-        REQUIRE(result.operand->type == Calculator::ExpressionType::Number);
+        REQUIRE(result.operand == nullptr);
+        REQUIRE(result.arguments.size() == 1);
+        REQUIRE(result.arguments[0].type == Calculator::ExpressionType::Number);
     };
 
     requireFunction("sin(0)", Calculator::Function::Sine);
@@ -271,11 +275,11 @@ TEST_CASE("Parser nests trigonometric function calls")
     const auto result = parser.parse();
 
     REQUIRE(result.function == Calculator::Function::Sine);
-    REQUIRE(result.operand->type == Calculator::ExpressionType::FunctionCall);
-    REQUIRE(result.operand->function == Calculator::Function::Cosine);
+    REQUIRE(result.arguments[0].type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.arguments[0].function == Calculator::Function::Cosine);
 }
 
-TEST_CASE("Parser recognizes pi as a symbolic constant")
+TEST_CASE("Parser recognizes symbolic constants")
 {
     Calculator::Lexer lexer("pi");
     const auto tokens = lexer.tokenize();
@@ -285,6 +289,12 @@ TEST_CASE("Parser recognizes pi as a symbolic constant")
     REQUIRE(result.type == Calculator::ExpressionType::Constant);
     REQUIRE(result.constant == Calculator::Constant::Pi);
     REQUIRE(result.position == 0);
+
+    Calculator::Lexer eLexer("e");
+    Calculator::Parser eParser(eLexer.tokenize());
+    const auto eResult = eParser.parse();
+    REQUIRE(eResult.type == Calculator::ExpressionType::Constant);
+    REQUIRE(eResult.constant == Calculator::Constant::E);
 }
 
 TEST_CASE("Parser nests logarithm and absolute value calls")
@@ -295,9 +305,9 @@ TEST_CASE("Parser nests logarithm and absolute value calls")
     const auto result = parser.parse();
 
     REQUIRE(result.function == Calculator::Function::NaturalLogarithm);
-    REQUIRE(result.operand->type == Calculator::ExpressionType::FunctionCall);
-    REQUIRE(result.operand->function == Calculator::Function::AbsoluteValue);
-    REQUIRE(result.operand->operand->type == Calculator::ExpressionType::UnaryOperation);
+    REQUIRE(result.arguments[0].type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.arguments[0].function == Calculator::Function::AbsoluteValue);
+    REQUIRE(result.arguments[0].arguments[0].type == Calculator::ExpressionType::UnaryOperation);
 }
 
 TEST_CASE("Parser recognizes unary negation with exponentiation precedence")
@@ -331,7 +341,7 @@ TEST_CASE("Parser rejects unsupported and malformed function calls")
 {
     requireSyntaxError("unknown(1)", 0, "Unknown identifier 'unknown'");
     requireSyntaxError("sqrt", 4, "Expected '(' after function name");
-    requireSyntaxError("sqrt()", 5, "Expected expression");
+    requireSyntaxError("sqrt()", 0, "Function 'sqrt' expects 1 argument");
     requireSyntaxError("sqrt(9", 6, "Expected ')'");
     requireSyntaxError("sqrt(4) 2", 8, "Unexpected token '2' after expression");
 }
@@ -354,4 +364,47 @@ TEST_CASE("Parser rejects constants without explicit operators")
     requireSyntaxError("pi()", 2, "Unexpected token '(' after expression");
     requireSyntaxError("pi2", 0, "Unknown identifier 'pi2'");
     requireSyntaxError("2pi", 1, "Unexpected token 'pi' after expression");
+    requireSyntaxError("e2", 0, "Unknown identifier 'e2'");
+    requireSyntaxError("2e", 1, "Unexpected token 'e' after expression");
+}
+
+TEST_CASE("Parser builds function calls with general argument lists")
+{
+    Calculator::Lexer lexer("log(2,sqrt(16))");
+    Calculator::Parser parser(lexer.tokenize());
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.function == Calculator::Function::Logarithm);
+    REQUIRE(result.operand == nullptr);
+    REQUIRE(result.arguments.size() == 2);
+    REQUIRE(result.arguments[0].type == Calculator::ExpressionType::Number);
+    REQUIRE(result.arguments[0].value == 2);
+    REQUIRE(result.arguments[1].type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.arguments[1].function == Calculator::Function::SquareRoot);
+    REQUIRE(result.arguments[1].arguments.size() == 1);
+
+    Calculator::Lexer nestedLexer("log(2,log(3,81))");
+    Calculator::Parser nestedParser(nestedLexer.tokenize());
+    const auto nested = nestedParser.parse();
+    REQUIRE(nested.arguments[1].function == Calculator::Function::Logarithm);
+    REQUIRE(nested.arguments[1].arguments.size() == 2);
+}
+
+TEST_CASE("Parser reports function arity errors")
+{
+    requireSyntaxError("log()", 0, "Function 'log' expects 2 arguments");
+    requireSyntaxError("log(2)", 0, "Function 'log' expects 2 arguments");
+    requireSyntaxError("log(2,8,16)", 0, "Function 'log' expects 2 arguments");
+    requireSyntaxError("sin(1,2)", 0, "Function 'sin' expects 1 argument");
+}
+
+TEST_CASE("Parser reports malformed function argument lists")
+{
+    requireSyntaxError("log(,8)", 4, "Expected expression");
+    requireSyntaxError("log(2,)", 6, "Expected expression");
+    requireSyntaxError("log(2,,8)", 6, "Expected expression");
+    requireSyntaxError("log(2 8)", 6, "Expected ',' or ')' after function argument");
+    requireSyntaxError("log(2,8", 7, "Expected ')'");
+    requireSyntaxError("2,3", 1, "Unexpected token ',' after expression");
 }

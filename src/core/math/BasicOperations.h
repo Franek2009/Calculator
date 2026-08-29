@@ -15,6 +15,7 @@ namespace Calculator::BasicOperations
     double absoluteValue(double number);
     double naturalLogarithm(double number);
     double base10Logarithm(double number);
+    double logarithm(double base, double value);
 }
 
 #endif

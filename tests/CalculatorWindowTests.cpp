@@ -19,6 +19,8 @@ private slots:
     void scientificLabelsInsertParserSyntax();
     void powerAndSquareButtonsUseExistingGrammar();
     void insertsPiAtTheCursor();
+    void insertsEAndGeneralLogarithmSyntax();
+    void switchesAngleModesAndCalculatesInDegrees();
     void screenBackspaceMatchesLineEditBehavior();
     void switchesMutuallyExclusiveKeypadModesWithoutLosingInput();
     void clearsStaleMessageOnlyWhenTextChanges();
@@ -256,6 +258,78 @@ void CalculatorWindowTests::insertsPiAtTheCursor()
 
     QCOMPARE(input->text(), "2*pi");
     QCOMPARE(input->cursorPosition(), 4);
+}
+
+void CalculatorWindowTests::insertsEAndGeneralLogarithmSyntax()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* eButton = window.findChild<QPushButton*>("eButton");
+    auto* logButton = window.findChild<QPushButton*>("logButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(eButton);
+    QVERIFY(logButton);
+    QCOMPARE(eButton->text(), "e");
+    QCOMPARE(logButton->text(), "log");
+
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(eButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "e");
+    QCOMPARE(input->cursorPosition(), 1);
+
+    input->clear();
+    QTest::mouseClick(logButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "log(, )");
+    QCOMPARE(input->cursorPosition(), 4);
+
+    input->setText("8");
+    input->selectAll();
+    QTest::mouseClick(logButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "log(, 8)");
+    QCOMPARE(input->cursorPosition(), 4);
+    QVERIFY(!input->hasSelectedText());
+}
+
+void CalculatorWindowTests::switchesAngleModesAndCalculatesInDegrees()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* radiansButton = window.findChild<QPushButton*>("radiansButton");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(radiansButton);
+    QVERIFY(degreesButton);
+    QVERIFY(radiansButton->isChecked());
+    QVERIFY(!degreesButton->isChecked());
+
+    input->setText("sin(90)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QVERIFY(message->text() != "Result: 1");
+    const QString expression = input->text();
+
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    QVERIFY(!radiansButton->isChecked());
+    QVERIFY(degreesButton->isChecked());
+    QCOMPARE(input->text(), expression);
+    QVERIFY(message->text().isEmpty());
+
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 1");
+
+    QTest::mouseClick(radiansButton, Qt::LeftButton);
+    QVERIFY(radiansButton->isChecked());
+    QVERIFY(!degreesButton->isChecked());
+    QCOMPARE(input->text(), expression);
+    QVERIFY(message->text().isEmpty());
+    QVERIFY(input->hasFocus());
 }
 
 void CalculatorWindowTests::screenBackspaceMatchesLineEditBehavior()

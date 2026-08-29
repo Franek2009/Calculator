@@ -13,13 +13,14 @@
 
 namespace
 {
-    double calculate(const std::string& input)
+    double calculate(const std::string& input,
+                     Calculator::AngleMode angleMode = Calculator::AngleMode::Radians)
     {
         Calculator::Lexer lexer(input);
         const auto tokens = lexer.tokenize();
         Calculator::Parser parser(tokens);
         const auto expression = parser.parse();
-        Calculator::Evaluator evaluator;
+        Calculator::Evaluator evaluator(angleMode);
 
         return evaluator.evaluate(expression);
     }
@@ -100,6 +101,31 @@ TEST_CASE("Calculation pipeline evaluates pi, absolute value, and logarithms")
     REQUIRE(calculate("ln(1)") == 0);
     REQUIRE(calculate("log10(1000)") == 3);
     REQUIRE(calculate("ln(abs(-2))") == Catch::Approx(std::log(2.0)));
+    REQUIRE(calculate("e") == Catch::Approx(std::numbers::e));
+    REQUIRE(calculate("2*e") == Catch::Approx(2 * std::numbers::e));
+    REQUIRE(calculate("ln(e)") == Catch::Approx(1.0));
+    REQUIRE(calculate("e^2") == Catch::Approx(std::numbers::e * std::numbers::e));
+    REQUIRE(calculate("log(2,8)") == Catch::Approx(3.0));
+    REQUIRE(calculate("log(10,1000)") == Catch::Approx(3.0));
+    REQUIRE(calculate("log(3,81)") == Catch::Approx(4.0));
+    REQUIRE(calculate("log(2,sqrt(16))") == Catch::Approx(2.0));
+    REQUIRE(calculate("log(2,log(3,81))") == Catch::Approx(2.0));
+}
+
+TEST_CASE("Calculation pipeline supports radian and degree angle modes")
+{
+    REQUIRE(calculate("sin(pi/2)") == Catch::Approx(1.0).epsilon(1e-12));
+    REQUIRE(calculate("cos(pi)") == Catch::Approx(-1.0).epsilon(1e-12));
+    REQUIRE(calculate("tan(pi/4)") == Catch::Approx(1.0).epsilon(1e-12));
+
+    REQUIRE(calculate("sin(90)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+    REQUIRE(calculate("cos(180)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(-1.0).epsilon(1e-12));
+    REQUIRE(calculate("tan(45)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+    REQUIRE(calculate("sin(90)") !=
+            Catch::Approx(1.0).epsilon(1e-12));
 }
 
 TEST_CASE("Calculation pipeline reports logarithm domain errors")
@@ -125,6 +151,11 @@ TEST_CASE("Calculation pipeline reports logarithm domain errors")
     requireEvaluationError("ln(-1)", "Natural logarithm of a non-positive number");
     requireEvaluationError("log10(0)", "Base-10 logarithm of a non-positive number");
     requireEvaluationError("log10(-1)", "Base-10 logarithm of a non-positive number");
+    requireEvaluationError("log(0,8)", "Logarithm base must be positive");
+    requireEvaluationError("log(-2,8)", "Logarithm base must be positive");
+    requireEvaluationError("log(1,8)", "Logarithm base must not equal 1");
+    requireEvaluationError("log(2,0)", "Logarithm value must be positive");
+    requireEvaluationError("log(2,-8)", "Logarithm value must be positive");
 }
 
 TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negation")

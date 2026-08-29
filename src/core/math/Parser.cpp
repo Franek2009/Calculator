@@ -201,7 +201,7 @@ namespace Calculator
             const Token& identifierToken = tokens[current];
             const std::size_t position = identifierToken.position;
 
-            if (identifierToken.value == "pi")
+            if (identifierToken.value == "pi" || identifierToken.value == "e")
             {
                 current++;
 
@@ -215,7 +215,7 @@ namespace Calculator
                     Function::SquareRoot,
                     nullptr,
                     position,
-                    Constant::Pi
+                    identifierToken.value == "pi" ? Constant::Pi : Constant::E
                 };
             }
 
@@ -230,17 +230,10 @@ namespace Calculator
 
             current++;
 
-            Expression operand = parseExpression();
+            auto arguments = parseArgumentList();
+            validateFunctionArity(function, identifierToken, arguments.size());
 
-            if (current >= tokens.size() ||
-                tokens[current].type != TokenType::RightParenthesis)
-            {
-                throwSyntaxError("Expected ')'");
-            }
-
-            current++;
-
-            return {
+            Expression result{
                 ExpressionType::FunctionCall,
                 0,
                 Operator::Add,
@@ -248,9 +241,12 @@ namespace Calculator
                 nullptr,
                 UnaryOperator::Negate,
                 function,
-                std::make_unique<Expression>(std::move(operand)),
+                nullptr,
                 position
             };
+            result.arguments = std::move(arguments);
+
+            return result;
         }
 
         if (tokens[current].type == TokenType::LeftParenthesis)
@@ -271,6 +267,42 @@ namespace Calculator
         }
 
         throwSyntaxError("Expected expression");
+    }
+
+    std::vector<Expression> Parser::parseArgumentList()
+    {
+        std::vector<Expression> arguments;
+
+        if (current < tokens.size() &&
+            tokens[current].type == TokenType::RightParenthesis)
+        {
+            current++;
+            return arguments;
+        }
+
+        while (true)
+        {
+            arguments.push_back(parseExpression());
+
+            if (current >= tokens.size())
+            {
+                throwSyntaxError("Expected ')'");
+            }
+
+            if (tokens[current].type == TokenType::Comma)
+            {
+                current++;
+                continue;
+            }
+
+            if (tokens[current].type == TokenType::RightParenthesis)
+            {
+                current++;
+                return arguments;
+            }
+
+            throwSyntaxError("Expected ',' or ')' after function argument");
+        }
     }
 
     Function Parser::parseFunction(const Token& token) const
@@ -310,10 +342,55 @@ namespace Calculator
             return Function::Base10Logarithm;
         }
 
+        if (token.value == "log")
+        {
+            return Function::Logarithm;
+        }
+
         throw CalculatorError(
             ErrorCategory::Syntax,
             token.position,
             "Unknown identifier '" + token.value + "'"
+        );
+    }
+
+    std::size_t Parser::expectedArgumentCount(Function function)
+    {
+        switch (function)
+        {
+            case Function::SquareRoot:
+            case Function::Sine:
+            case Function::Cosine:
+            case Function::Tangent:
+            case Function::AbsoluteValue:
+            case Function::NaturalLogarithm:
+            case Function::Base10Logarithm:
+                return 1;
+
+            case Function::Logarithm:
+                return 2;
+        }
+
+        return 0;
+    }
+
+    void Parser::validateFunctionArity(Function function,
+                                       const Token& token,
+                                       std::size_t actualCount)
+    {
+        const std::size_t expectedCount = expectedArgumentCount(function);
+
+        if (actualCount == expectedCount)
+        {
+            return;
+        }
+
+        throw CalculatorError(
+            ErrorCategory::Syntax,
+            token.position,
+            "Function '" + token.value + "' expects " +
+                std::to_string(expectedCount) +
+                (expectedCount == 1 ? " argument" : " arguments")
         );
     }
 

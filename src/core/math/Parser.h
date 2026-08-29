@@ -26,7 +26,12 @@ namespace Calculator
         Expression parseUnary();
         Expression parsePower();
         Expression parsePrimary();
+        std::vector<Expression> parseArgumentList();
         Function parseFunction(const Token& token) const;
+        static std::size_t expectedArgumentCount(Function function);
+        static void validateFunctionArity(Function function,
+                                          const Token& token,
+                                          std::size_t actualCount);
 
         std::size_t errorPosition() const;
         [[noreturn]] void throwSyntaxError(const std::string& description) const;

@@ -54,7 +54,7 @@ namespace
     Calculator::Expression function(Calculator::Function function,
                                     Calculator::Expression operand)
     {
-        return {
+        Calculator::Expression result{
             Calculator::ExpressionType::FunctionCall,
             0,
             Calculator::Operator::Add,
@@ -62,8 +62,29 @@ namespace
             nullptr,
             Calculator::UnaryOperator::Negate,
             function,
-            std::make_unique<Calculator::Expression>(std::move(operand))
+            nullptr
         };
+        result.arguments.push_back(std::move(operand));
+        return result;
+    }
+
+    Calculator::Expression function(Calculator::Function function,
+                                    Calculator::Expression first,
+                                    Calculator::Expression second)
+    {
+        Calculator::Expression result{
+            Calculator::ExpressionType::FunctionCall,
+            0,
+            Calculator::Operator::Add,
+            nullptr,
+            nullptr,
+            Calculator::UnaryOperator::Negate,
+            function,
+            nullptr
+        };
+        result.arguments.push_back(std::move(first));
+        result.arguments.push_back(std::move(second));
+        return result;
     }
 
     Calculator::Expression constant(Calculator::Constant constant,
@@ -184,15 +205,38 @@ TEST_CASE("Evaluator evaluates trigonometric functions in radians")
             Catch::Approx(std::tan(0.5)));
 }
 
+TEST_CASE("Evaluator converts degrees for trigonometric functions")
+{
+    Calculator::Evaluator evaluator(Calculator::AngleMode::Degrees);
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Sine, number(90))) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Cosine, number(180))) ==
+            Catch::Approx(-1.0).epsilon(1e-12));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Tangent, number(45))) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+}
+
 TEST_CASE("Evaluator evaluates constants, absolute value, and logarithms")
 {
     Calculator::Evaluator evaluator;
 
     REQUIRE(evaluator.evaluate(constant(Calculator::Constant::Pi)) ==
             Catch::Approx(std::numbers::pi));
+    REQUIRE(evaluator.evaluate(constant(Calculator::Constant::E)) ==
+            Catch::Approx(std::numbers::e));
     REQUIRE(evaluator.evaluate(function(Calculator::Function::AbsoluteValue, number(-5))) == 5);
     REQUIRE(evaluator.evaluate(function(Calculator::Function::NaturalLogarithm, number(1))) == 0);
     REQUIRE(evaluator.evaluate(function(Calculator::Function::Base10Logarithm, number(100))) == 2);
+}
+
+TEST_CASE("Evaluator evaluates logarithms with arbitrary bases")
+{
+    Calculator::Evaluator evaluator;
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Logarithm,
+                                        number(2), number(8))) ==
+            Catch::Approx(3.0));
 }
 
 TEST_CASE("Evaluator reports logarithm domain errors")
@@ -265,4 +309,23 @@ TEST_CASE("Evaluator rejects unary operations and function calls without operand
 
     REQUIRE_THROWS_AS(evaluator.evaluate(unaryExpression), std::invalid_argument);
     REQUIRE_THROWS_AS(evaluator.evaluate(functionExpression), std::invalid_argument);
+}
+
+TEST_CASE("Evaluator defensively rejects function calls with incorrect arity")
+{
+    Calculator::Evaluator evaluator;
+    auto expression = function(Calculator::Function::SquareRoot, number(4));
+    expression.arguments.push_back(number(9));
+
+    try
+    {
+        evaluator.evaluate(expression);
+        FAIL("Expected an evaluation error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+        REQUIRE(std::string(error.what()) ==
+                "Evaluation error at position 1: Function call requires 1 argument");
+    }
 }

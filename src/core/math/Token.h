@@ -18,6 +18,7 @@ namespace Calculator
 
         LeftParenthesis,
         RightParenthesis,
+        Comma,
 
         Identifier
     };

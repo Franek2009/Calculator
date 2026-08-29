@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <cstddef>
+#include <vector>
 
 namespace Calculator
 {
@@ -37,12 +38,14 @@ namespace Calculator
         Tangent,
         AbsoluteValue,
         NaturalLogarithm,
-        Base10Logarithm
+        Base10Logarithm,
+        Logarithm
     };
 
     enum class Constant
     {
-        Pi
+        Pi,
+        E
     };
 
     struct Expression
@@ -61,6 +64,8 @@ namespace Calculator
 
         std::size_t position;
         Constant constant;
+
+        std::vector<Expression> arguments;
     };
 }
 

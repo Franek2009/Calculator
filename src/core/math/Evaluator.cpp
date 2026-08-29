@@ -5,9 +5,38 @@
 
 #include <numbers>
 #include <stdexcept>
+#include <string>
 
 namespace Calculator
 {
+    namespace
+    {
+        std::size_t expectedArgumentCount(Function function)
+        {
+            switch (function)
+            {
+                case Function::SquareRoot:
+                case Function::Sine:
+                case Function::Cosine:
+                case Function::Tangent:
+                case Function::AbsoluteValue:
+                case Function::NaturalLogarithm:
+                case Function::Base10Logarithm:
+                    return 1;
+
+                case Function::Logarithm:
+                    return 2;
+            }
+
+            return 0;
+        }
+    }
+
+    Evaluator::Evaluator(AngleMode angleMode)
+        : angleMode(angleMode)
+    {
+    }
+
     double Evaluator::evaluate(const Expression& expression) const
     {
         try
@@ -22,6 +51,9 @@ namespace Calculator
                     {
                         case Constant::Pi:
                             return std::numbers::pi;
+
+                        case Constant::E:
+                            return std::numbers::e;
                     }
 
                     throw CalculatorError(
@@ -95,37 +127,56 @@ namespace Calculator
 
                 case ExpressionType::FunctionCall:
                 {
-                    if (!expression.operand)
+                    const std::size_t expectedCount = expectedArgumentCount(expression.function);
+
+                    if (expression.arguments.size() != expectedCount)
                     {
                         throw CalculatorError(
                             ErrorCategory::Evaluation,
                             expression.position,
-                            "Function call requires an argument"
+                            "Function call requires " + std::to_string(expectedCount) +
+                                (expectedCount == 1 ? " argument" : " arguments")
                         );
                     }
 
                     switch (expression.function)
                     {
                         case Function::SquareRoot:
-                            return BasicOperations::squareRoot(evaluate(*expression.operand));
+                            return BasicOperations::squareRoot(evaluate(expression.arguments[0]));
 
                         case Function::Sine:
-                            return BasicOperations::sine(evaluate(*expression.operand));
+                            return BasicOperations::sine(
+                                angleInRadians(evaluate(expression.arguments[0]))
+                            );
 
                         case Function::Cosine:
-                            return BasicOperations::cosine(evaluate(*expression.operand));
+                            return BasicOperations::cosine(
+                                angleInRadians(evaluate(expression.arguments[0]))
+                            );
 
                         case Function::Tangent:
-                            return BasicOperations::tangent(evaluate(*expression.operand));
+                            return BasicOperations::tangent(
+                                angleInRadians(evaluate(expression.arguments[0]))
+                            );
 
                         case Function::AbsoluteValue:
-                            return BasicOperations::absoluteValue(evaluate(*expression.operand));
+                            return BasicOperations::absoluteValue(evaluate(expression.arguments[0]));
 
                         case Function::NaturalLogarithm:
-                            return BasicOperations::naturalLogarithm(evaluate(*expression.operand));
+                            return BasicOperations::naturalLogarithm(
+                                evaluate(expression.arguments[0])
+                            );
 
                         case Function::Base10Logarithm:
-                            return BasicOperations::base10Logarithm(evaluate(*expression.operand));
+                            return BasicOperations::base10Logarithm(
+                                evaluate(expression.arguments[0])
+                            );
+
+                        case Function::Logarithm:
+                            return BasicOperations::logarithm(
+                                evaluate(expression.arguments[0]),
+                                evaluate(expression.arguments[1])
+                            );
                     }
 
                     throw CalculatorError(
@@ -152,5 +203,15 @@ namespace Calculator
                                   expression.position,
                                   error.what());
         }
+    }
+
+    double Evaluator::angleInRadians(double angle) const
+    {
+        if (angleMode == AngleMode::Degrees)
+        {
+            return angle * std::numbers::pi / 180.0;
+        }
+
+        return angle;
     }
 }
