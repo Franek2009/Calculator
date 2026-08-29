@@ -7,6 +7,7 @@
 
 #include <QByteArray>
 #include <QButtonGroup>
+#include <QFontMetrics>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -15,11 +16,15 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QPainter>
+#include <QPaintEvent>
 #include <QPushButton>
 #include <QShortcut>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
 #include <QString>
 #include <QVBoxLayout>
 #include <QVariant>
@@ -35,9 +40,118 @@ namespace CalculatorUI
     {
         constexpr int historyPanelWidth = 280;
         constexpr int historyEntryLimit = 100;
+        constexpr int calculatorMinimumWidth = 600;
+        constexpr int calculatorMaximumWidth = 960;
+        constexpr int calculatorMinimumHeight = 560;
+        constexpr int keypadButtonMaximumHeight = 72;
         constexpr int expressionRole = Qt::UserRole;
         constexpr int resultRole = Qt::UserRole + 1;
         constexpr int angleModeRole = Qt::UserRole + 2;
+        constexpr int resultTextRole = Qt::UserRole + 3;
+
+        class ElidedLabel final : public QLabel
+        {
+        public:
+            explicit ElidedLabel(QWidget* parent = nullptr)
+                : QLabel(parent)
+            {
+            }
+
+        protected:
+            void paintEvent(QPaintEvent*) override
+            {
+                QPainter painter(this);
+                painter.setPen(palette().color(foregroundRole()));
+                painter.setFont(font());
+                const QRect textRect = contentsRect();
+                const QString elided = fontMetrics().elidedText(
+                    text(), Qt::ElideRight, textRect.width()
+                );
+                painter.drawText(textRect, alignment(), elided);
+            }
+        };
+
+        class HistoryItemDelegate final : public QStyledItemDelegate
+        {
+        public:
+            using QStyledItemDelegate::QStyledItemDelegate;
+
+            QSize sizeHint(const QStyleOptionViewItem& option,
+                           const QModelIndex&) const override
+            {
+                Q_UNUSED(option);
+                return {0, 62};
+            }
+
+            void paint(QPainter* painter,
+                       const QStyleOptionViewItem& option,
+                       const QModelIndex& index) const override
+            {
+                painter->save();
+
+                QColor background = QColor("#10151c");
+                if (option.state & QStyle::State_Selected)
+                {
+                    background = QColor("#234d7d");
+                }
+                else if (option.state & QStyle::State_MouseOver)
+                {
+                    background = QColor("#202b38");
+                }
+                painter->fillRect(option.rect, background);
+
+                const QRect content = option.rect.adjusted(10, 6, -10, -6);
+                QFont expressionFont = option.font;
+                expressionFont.setWeight(QFont::Medium);
+                painter->setFont(expressionFont);
+                painter->setPen(QColor("#edf2f8"));
+                painter->drawText(
+                    content.left(), content.top(), content.width(), 22,
+                    Qt::AlignLeft | Qt::AlignVCenter,
+                    QFontMetrics(expressionFont).elidedText(
+                        index.data(expressionRole).toString(),
+                        Qt::ElideRight,
+                        content.width()
+                    )
+                );
+
+                const QString mode = static_cast<Calculator::AngleMode>(
+                    index.data(angleModeRole).toInt()
+                ) == Calculator::AngleMode::Radians ? "RAD" : "DEG";
+                QFont detailFont = option.font;
+                detailFont.setPointSizeF(std::max(8.0, detailFont.pointSizeF() - 1.0));
+                painter->setFont(detailFont);
+                const QFontMetrics details(detailFont);
+                const int badgeWidth = details.horizontalAdvance(mode) + 14;
+                const QRect badgeRect(
+                    content.right() - badgeWidth + 1,
+                    content.bottom() - 19,
+                    badgeWidth,
+                    18
+                );
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(QColor("#27384c"));
+                painter->drawRoundedRect(badgeRect, 6, 6);
+                painter->setPen(QColor("#b9d9ff"));
+                painter->drawText(badgeRect, Qt::AlignCenter, mode);
+
+                const int resultWidth = std::max(0, content.width() - badgeWidth - 10);
+                painter->setPen(QColor("#aeb9c7"));
+                painter->drawText(
+                    content.left(), content.bottom() - 19, resultWidth, 18,
+                    Qt::AlignLeft | Qt::AlignVCenter,
+                    details.elidedText(
+                        "= " + index.data(resultTextRole).toString(),
+                        Qt::ElideRight,
+                        resultWidth
+                    )
+                );
+
+                painter->setPen(QColor("#27313d"));
+                painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
+                painter->restore();
+            }
+        };
 
         constexpr auto windowStyle = R"(
             QMainWindow, QWidget#centralWidget {
@@ -58,23 +172,16 @@ namespace CalculatorUI
                 font-size: 18px;
                 font-weight: 600;
             }
+            QLabel#historyEmptyLabel {
+                color: #7f8b99;
+                font-size: 14px;
+            }
             QListWidget#historyList {
                 border: 1px solid #303a47;
                 border-radius: 8px;
                 background-color: #10151c;
                 color: #dce5ef;
                 outline: none;
-            }
-            QListWidget#historyList::item {
-                padding: 9px;
-                border-bottom: 1px solid #27313d;
-            }
-            QListWidget#historyList::item:hover {
-                background-color: #202b38;
-            }
-            QListWidget#historyList::item:selected {
-                background-color: #234d7d;
-                color: white;
             }
             QLineEdit#expressionInput {
                 min-height: 54px;
@@ -108,6 +215,11 @@ namespace CalculatorUI
             }
             QPushButton:pressed {
                 background-color: #18202a;
+            }
+            QPushButton:disabled {
+                background-color: #181f28;
+                border-color: #27313d;
+                color: #66717e;
             }
             QPushButton[buttonRole="function"] {
                 background-color: #223044;
@@ -148,7 +260,7 @@ namespace CalculatorUI
           angleMode(Calculator::AngleMode::Radians)
     {
         setWindowTitle("Calculator");
-        setMinimumSize(600, 560);
+        setMinimumSize(calculatorMinimumWidth, calculatorMinimumHeight);
         resize(680, 620);
         setStyleSheet(windowStyle);
 
@@ -159,6 +271,8 @@ namespace CalculatorUI
         mainLayout->setSpacing(0);
 
         auto* calculatorPanel = new QWidget(centralWidget);
+        calculatorPanel->setMinimumWidth(calculatorMinimumWidth);
+        calculatorPanel->setMaximumWidth(calculatorMaximumWidth);
         auto* layout = new QVBoxLayout(calculatorPanel);
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(12);
@@ -172,9 +286,11 @@ namespace CalculatorUI
         expressionInput = new QLineEdit(displayPanel);
         expressionInput->setPlaceholderText("Enter an expression, e.g. sin(pi/2) + ln(10)");
         expressionInput->setObjectName("expressionInput");
+        expressionInput->setMinimumWidth(0);
+        expressionInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-        messageLabel = new QLabel(displayPanel);
-        messageLabel->setWordWrap(true);
+        messageLabel = new ElidedLabel(displayPanel);
+        messageLabel->setFixedHeight(28);
         messageLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         messageLabel->setObjectName("messageLabel");
         messageLabel->setProperty("messageType", "none");
@@ -189,6 +305,7 @@ namespace CalculatorUI
         functionsModeButton = createKeyButton("Functions", "functionsModeButton", "mode",
                                               centralWidget);
         historyButton = createKeyButton("History", "historyButton", "mode", centralWidget);
+        historyButton->setToolTip("Show or hide history (Ctrl+H)");
         basicModeButton->setCheckable(true);
         functionsModeButton->setCheckable(true);
         historyButton->setCheckable(true);
@@ -236,21 +353,33 @@ namespace CalculatorUI
 
         auto* historyTitle = new QLabel("History", historyPanel);
         historyTitle->setObjectName("historyTitle");
-        auto* clearHistoryButton = createKeyButton("Clear history", "clearHistoryButton",
-                                                   "clear", historyPanel);
+        clearHistoryButton = createKeyButton("Clear history", "clearHistoryButton",
+                                              "clear", historyPanel);
+        clearHistoryButton->setToolTip("Clear history (Ctrl+Shift+H)");
         clearHistoryButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
         historyList = new QListWidget(historyPanel);
         historyList->setObjectName("historyList");
-        historyList->setWordWrap(true);
-        historyList->setSpacing(2);
+        historyList->setWordWrap(false);
+        historyList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        historyList->setUniformItemSizes(true);
+        historyList->setMouseTracking(true);
+        historyList->setItemDelegate(new HistoryItemDelegate(historyList));
+
+        historyEmptyLabel = new QLabel("No history yet", historyPanel);
+        historyEmptyLabel->setObjectName("historyEmptyLabel");
+        historyEmptyLabel->setAlignment(Qt::AlignCenter);
+        historyEmptyLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
         historyLayout->addWidget(historyTitle);
         historyLayout->addWidget(historyList, 1);
+        historyLayout->addWidget(historyEmptyLabel, 1);
         historyLayout->addWidget(clearHistoryButton);
         historyPanel->hide();
 
+        mainLayout->addStretch(1);
         mainLayout->addWidget(calculatorPanel, 1);
+        mainLayout->addStretch(1);
         mainLayout->addWidget(historyPanel);
 
         setCentralWidget(centralWidget);
@@ -278,6 +407,30 @@ namespace CalculatorUI
         connect(clearShortcut, &QShortcut::activated, this,
                 [this]() { clearExpression(); });
 
+        auto* historyShortcut = new QShortcut(QKeySequence("Ctrl+H"), this);
+        connect(historyShortcut, &QShortcut::activated, this,
+                [this]() { historyButton->toggle(); });
+
+        auto* clearExpressionShortcut = new QShortcut(QKeySequence("Ctrl+L"), this);
+        connect(clearExpressionShortcut, &QShortcut::activated, this,
+                [this]() { clearExpression(); });
+
+        auto* clearHistoryShortcut = new QShortcut(QKeySequence("Ctrl+Shift+H"), this);
+        connect(clearHistoryShortcut, &QShortcut::activated, this,
+                [this]()
+                {
+                    if (clearHistoryButton->isEnabled())
+                    {
+                        clearHistory();
+                    }
+                    else
+                    {
+                        expressionInput->setFocus();
+                    }
+                });
+
+        updateHistoryState();
+        updateAnswerTooltips();
         expressionInput->setFocus();
     }
 
@@ -299,6 +452,7 @@ namespace CalculatorUI
 
             lastAnswer = result;
             addHistoryEntry(originalExpression, result, angleMode);
+            updateAnswerTooltips();
             setMessage("Result: " + QString::number(result, 'g', 15), "result");
         }
         catch (const Calculator::CalculatorError& error)
@@ -413,13 +567,16 @@ namespace CalculatorUI
     {
         if (visible)
         {
+            const int targetWidth = width() + historyPanelWidth;
+            setMinimumWidth(calculatorMinimumWidth + historyPanelWidth);
             historyPanel->show();
-            resize(width() + historyPanelWidth, height());
+            resize(targetWidth, height());
         }
         else
         {
             historyPanel->hide();
-            resize(std::max(minimumWidth(), width() - historyPanelWidth), height());
+            setMinimumWidth(calculatorMinimumWidth);
+            resize(std::max(calculatorMinimumWidth, width() - historyPanelWidth), height());
         }
 
         expressionInput->setFocus();
@@ -437,12 +594,16 @@ namespace CalculatorUI
         item->setData(expressionRole, expression);
         item->setData(resultRole, result);
         item->setData(angleModeRole, static_cast<int>(mode));
+        item->setData(resultTextRole, resultText);
+        item->setToolTip(expression + "\n= " + resultText + " · " + modeText);
         historyList->insertItem(0, item);
 
         while (historyList->count() > historyEntryLimit)
         {
             delete historyList->takeItem(historyList->count() - 1);
         }
+
+        updateHistoryState();
     }
 
     void CalculatorWindow::recallHistoryEntry(QListWidgetItem* item)
@@ -473,7 +634,26 @@ namespace CalculatorUI
     void CalculatorWindow::clearHistory()
     {
         historyList->clear();
+        updateHistoryState();
         expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::updateHistoryState()
+    {
+        const bool hasHistory = historyList->count() > 0;
+        historyList->setVisible(hasHistory);
+        historyEmptyLabel->setVisible(!hasHistory);
+        clearHistoryButton->setEnabled(hasHistory);
+    }
+
+    void CalculatorWindow::updateAnswerTooltips()
+    {
+        const QString tooltip = lastAnswer
+            ? "Insert Ans (Ans = " + QString::number(*lastAnswer, 'g', 15) + ")"
+            : "Ans is not available yet";
+
+        basicAnsButton->setToolTip(tooltip);
+        functionsAnsButton->setToolTip(tooltip);
     }
 
     void CalculatorWindow::showCalculationError(const Calculator::CalculatorError& error)
@@ -507,6 +687,7 @@ namespace CalculatorUI
     void CalculatorWindow::setMessage(const QString& message, const QString& type)
     {
         messageLabel->setText(message);
+        messageLabel->setToolTip(message);
         messageLabel->setProperty("messageType", type);
         messageLabel->style()->unpolish(messageLabel);
         messageLabel->style()->polish(messageLabel);
@@ -521,7 +702,8 @@ namespace CalculatorUI
         button->setObjectName(objectName);
         button->setProperty("buttonRole", role);
         button->setFocusPolicy(Qt::NoFocus);
-        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        button->setMaximumHeight(keypadButtonMaximumHeight);
         return button;
     }
 
@@ -532,6 +714,7 @@ namespace CalculatorUI
         auto* grid = new QGridLayout(keypad);
         grid->setContentsMargins(0, 0, 0, 0);
         grid->setSpacing(8);
+        grid->setAlignment(Qt::AlignTop);
 
         const auto addInsertButton = [this, keypad, grid](const QString& label,
                                                           const QString& text,
@@ -544,6 +727,7 @@ namespace CalculatorUI
             connect(button, &QPushButton::clicked, this,
                     [this, text]() { insertText(text); });
             grid->addWidget(button, row, column);
+            return button;
         };
 
         addInsertButton("7", "7", "basic7Button", "digit", 0, 0);
@@ -572,7 +756,7 @@ namespace CalculatorUI
         addInsertButton(".", ".", "basicDecimalButton", "digit", 3, 1);
         addInsertButton(QStringLiteral("xʸ"), "^", "basicPowerButton", "operator", 3, 2);
         addInsertButton("+", "+", "basicAddButton", "operator", 3, 3);
-        addInsertButton("Ans", "Ans", "basicAnsButton", "function", 3, 4);
+        basicAnsButton = addInsertButton("Ans", "Ans", "basicAnsButton", "function", 3, 4);
 
         auto* clearButton = createKeyButton("Clear", "clearButton", "clear", keypad);
         connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
@@ -598,6 +782,7 @@ namespace CalculatorUI
         auto* grid = new QGridLayout(keypad);
         grid->setContentsMargins(0, 0, 0, 0);
         grid->setSpacing(8);
+        grid->setAlignment(Qt::AlignTop);
 
         const auto addInsertButton = [this, keypad, grid](const QString& label,
                                                           const QString& text,
@@ -610,6 +795,7 @@ namespace CalculatorUI
             connect(button, &QPushButton::clicked, this,
                     [this, text]() { insertText(text); });
             grid->addWidget(button, row, column);
+            return button;
         };
         const auto addFunctionButton = [this, keypad, grid](const QString& label,
                                                             const QString& functionName,
@@ -664,7 +850,8 @@ namespace CalculatorUI
         auto* clearButton = createKeyButton("Clear", "functionsClearButton", "clear", keypad);
         connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
         grid->addWidget(clearButton, 3, 0);
-        addInsertButton("Ans", "Ans", "functionsAnsButton", "function", 3, 1);
+        functionsAnsButton = addInsertButton("Ans", "Ans", "functionsAnsButton", "function",
+                                              3, 1);
         addInsertButton("0", "0", "functions0Button", "digit", 3, 2);
         addInsertButton(".", ".", "functionsDecimalButton", "digit", 3, 3);
         addInsertButton("1", "1", "functions1Button", "digit", 3, 4);

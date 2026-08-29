@@ -48,6 +48,8 @@ namespace CalculatorUI
                              Calculator::AngleMode mode);
         void recallHistoryEntry(QListWidgetItem* item);
         void clearHistory();
+        void updateHistoryState();
+        void updateAnswerTooltips();
         void showCalculationError(const Calculator::CalculatorError& error);
         void setMessage(const QString& message, const QString& type);
         QPushButton* createKeyButton(const QString& label,
@@ -66,8 +68,12 @@ namespace CalculatorUI
         QPushButton* radiansButton;
         QPushButton* degreesButton;
         QPushButton* historyButton;
+        QPushButton* clearHistoryButton;
+        QPushButton* basicAnsButton;
+        QPushButton* functionsAnsButton;
         QFrame* historyPanel;
         QListWidget* historyList;
+        QLabel* historyEmptyLabel;
         Calculator::AngleMode angleMode;
         std::optional<double> lastAnswer;
     };

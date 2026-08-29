@@ -28,6 +28,11 @@ private slots:
     void recalledHistoryExpressionsUseTheCurrentAns();
     void historyCanBeClearedWithoutClearingAns();
     void historyKeepsOnlyTheHundredNewestEntries();
+    void historyShowsEmptyAndEnabledStates();
+    void applicationShortcutsPreserveInputFocus();
+    void longContentKeepsStableLayoutAndFullTooltips();
+    void historyAdjustsMinimumWidthWithoutResizeDrift();
+    void ansTooltipsTrackTheLastSuccessfulResult();
     void screenBackspaceMatchesLineEditBehavior();
     void switchesMutuallyExclusiveKeypadModesWithoutLosingInput();
     void clearsStaleMessageOnlyWhenTextChanges();
@@ -554,6 +559,169 @@ void CalculatorWindowTests::historyKeepsOnlyTheHundredNewestEntries()
     QCOMPARE(history->count(), 100);
     QVERIFY(history->item(0)->text().startsWith("100\n= 100"));
     QVERIFY(history->item(99)->text().startsWith("1\n= 1"));
+}
+
+void CalculatorWindowTests::historyShowsEmptyAndEnabledStates()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+    auto* emptyLabel = window.findChild<QLabel*>("historyEmptyLabel");
+    auto* clearHistoryButton = window.findChild<QPushButton*>("clearHistoryButton");
+
+    QVERIFY(input);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+    QVERIFY(emptyLabel);
+    QVERIFY(clearHistoryButton);
+    QVERIFY(!clearHistoryButton->isEnabled());
+
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QVERIFY(emptyLabel->isVisible());
+    QVERIFY(!history->isVisible());
+
+    input->setText("2+3");
+    QTest::keyClick(input, Qt::Key_Return);
+    QVERIFY(!emptyLabel->isVisible());
+    QVERIFY(history->isVisible());
+    QVERIFY(clearHistoryButton->isEnabled());
+
+    QTest::mouseClick(clearHistoryButton, Qt::LeftButton);
+    QVERIFY(emptyLabel->isVisible());
+    QVERIFY(!history->isVisible());
+    QVERIFY(!clearHistoryButton->isEnabled());
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::applicationShortcutsPreserveInputFocus()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+
+    input->setText("2+3");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 1);
+
+    QTest::keyClick(input, Qt::Key_H, Qt::ControlModifier);
+    QVERIFY(historyButton->isChecked());
+    QVERIFY(history->isVisible());
+    QVERIFY(input->hasFocus());
+
+    QTest::keyClick(input, Qt::Key_L, Qt::ControlModifier);
+    QVERIFY(input->text().isEmpty());
+    QVERIFY(input->hasFocus());
+
+    QTest::keyClick(input, Qt::Key_H, Qt::ControlModifier | Qt::ShiftModifier);
+    QCOMPARE(history->count(), 0);
+    QVERIFY(input->hasFocus());
+
+    QTest::keyClick(input, Qt::Key_H, Qt::ControlModifier);
+    QVERIFY(!historyButton->isChecked());
+    QVERIFY(!history->isVisible());
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::longContentKeepsStableLayoutAndFullTooltips()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+
+    const int messageHeight = message->height();
+    const QString longExpression = QString("1+").repeated(80) + "1";
+    input->setText(longExpression);
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->height(), messageHeight);
+
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QCOMPARE(history->horizontalScrollBarPolicy(), Qt::ScrollBarAlwaysOff);
+    QVERIFY(history->item(0)->toolTip().contains(longExpression));
+    const int longRowHeight = history->sizeHintForRow(0);
+
+    input->setText("2");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->sizeHintForRow(0), longRowHeight);
+
+    input->setText(QString("a").repeated(180));
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->height(), messageHeight);
+    QCOMPARE(message->toolTip(), message->text());
+    QVERIFY(message->text().size() > 100);
+}
+
+void CalculatorWindowTests::historyAdjustsMinimumWidthWithoutResizeDrift()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* basicButton = window.findChild<QPushButton*>("basic7Button");
+
+    QVERIFY(input);
+    QVERIFY(historyButton);
+    QVERIFY(basicButton);
+    QCOMPARE(window.minimumWidth(), 600);
+
+    const int closedWidth = window.width();
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QCOMPARE(window.minimumWidth(), 880);
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QCOMPARE(window.minimumWidth(), 600);
+    QCOMPARE(window.width(), closedWidth);
+
+    window.resize(1400, 900);
+    QTest::qWait(10);
+    QVERIFY(basicButton->height() <= 72);
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::ansTooltipsTrackTheLastSuccessfulResult()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* basicAnsButton = window.findChild<QPushButton*>("basicAnsButton");
+    auto* functionsAnsButton = window.findChild<QPushButton*>("functionsAnsButton");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+    auto* clearHistoryButton = window.findChild<QPushButton*>("clearHistoryButton");
+
+    QVERIFY(input);
+    QVERIFY(basicAnsButton);
+    QVERIFY(functionsAnsButton);
+    QVERIFY(degreesButton);
+    QVERIFY(clearHistoryButton);
+    QCOMPARE(basicAnsButton->toolTip(), "Ans is not available yet");
+    QCOMPARE(functionsAnsButton->toolTip(), "Ans is not available yet");
+
+    input->setText("2+3");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(basicAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+    QCOMPARE(functionsAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+
+    input->setText("1/0");
+    QTest::keyClick(input, Qt::Key_Return);
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    QTest::mouseClick(clearHistoryButton, Qt::LeftButton);
+    QCOMPARE(basicAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+    QCOMPARE(functionsAnsButton->toolTip(), "Insert Ans (Ans = 5)");
+    QVERIFY(input->hasFocus());
 }
 
 void CalculatorWindowTests::screenBackspaceMatchesLineEditBehavior()
