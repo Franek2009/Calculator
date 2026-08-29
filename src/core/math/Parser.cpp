@@ -198,18 +198,10 @@ namespace Calculator
 
         if (tokens[current].type == TokenType::Function)
         {
-            const std::size_t position = tokens[current].position;
-            const std::string functionName = tokens[current].value;
+            const Token& functionToken = tokens[current];
+            const std::size_t position = functionToken.position;
+            const Function function = parseFunction(functionToken);
             current++;
-
-            if (functionName != "sqrt")
-            {
-                throw CalculatorError(
-                    ErrorCategory::Syntax,
-                    position,
-                    "Unsupported function '" + functionName + "'"
-                );
-            }
 
             if (current >= tokens.size() ||
                 tokens[current].type != TokenType::LeftParenthesis)
@@ -236,7 +228,7 @@ namespace Calculator
                 nullptr,
                 nullptr,
                 UnaryOperator::Negate,
-                Function::SquareRoot,
+                function,
                 std::make_unique<Expression>(std::move(operand)),
                 position
             };
@@ -260,6 +252,35 @@ namespace Calculator
         }
 
         throwSyntaxError("Expected expression");
+    }
+
+    Function Parser::parseFunction(const Token& token) const
+    {
+        if (token.value == "sqrt")
+        {
+            return Function::SquareRoot;
+        }
+
+        if (token.value == "sin")
+        {
+            return Function::Sine;
+        }
+
+        if (token.value == "cos")
+        {
+            return Function::Cosine;
+        }
+
+        if (token.value == "tan")
+        {
+            return Function::Tangent;
+        }
+
+        throw CalculatorError(
+            ErrorCategory::Syntax,
+            token.position,
+            "Unsupported function '" + token.value + "'"
+        );
     }
 
     std::size_t Parser::errorPosition() const

@@ -30,7 +30,10 @@ namespace Calculator
 
     enum class Function
     {
-        SquareRoot
+        SquareRoot,
+        Sine,
+        Cosine,
+        Tangent
     };
 
     struct Expression

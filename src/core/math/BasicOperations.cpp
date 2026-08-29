@@ -44,4 +44,19 @@ namespace Calculator::BasicOperations
 
         return std::sqrt(number);
     }
+
+    double sine(double radians)
+    {
+        return std::sin(radians);
+    }
+
+    double cosine(double radians)
+    {
+        return std::cos(radians);
+    }
+
+    double tangent(double radians)
+    {
+        return std::tan(radians);
+    }
 }

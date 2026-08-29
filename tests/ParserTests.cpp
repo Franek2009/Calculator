@@ -240,6 +240,38 @@ TEST_CASE("Parser allows an expression as a function argument")
     REQUIRE(result.operand->operation == Calculator::Operator::Add);
 }
 
+TEST_CASE("Parser recognizes trigonometric function calls")
+{
+    const auto requireFunction = [](const std::string& input,
+                                    Calculator::Function expectedFunction)
+    {
+        Calculator::Lexer lexer(input);
+        const auto tokens = lexer.tokenize();
+        Calculator::Parser parser(tokens);
+        const auto result = parser.parse();
+
+        REQUIRE(result.type == Calculator::ExpressionType::FunctionCall);
+        REQUIRE(result.function == expectedFunction);
+        REQUIRE(result.operand->type == Calculator::ExpressionType::Number);
+    };
+
+    requireFunction("sin(0)", Calculator::Function::Sine);
+    requireFunction("cos(0)", Calculator::Function::Cosine);
+    requireFunction("tan(0)", Calculator::Function::Tangent);
+}
+
+TEST_CASE("Parser nests trigonometric function calls")
+{
+    Calculator::Lexer lexer("sin(cos(0))");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+    const auto result = parser.parse();
+
+    REQUIRE(result.function == Calculator::Function::Sine);
+    REQUIRE(result.operand->type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.operand->function == Calculator::Function::Cosine);
+}
+
 TEST_CASE("Parser recognizes unary negation with exponentiation precedence")
 {
     Calculator::Lexer lexer("-2^2");
@@ -269,7 +301,7 @@ TEST_CASE("Parser accepts unary negation as an exponent")
 
 TEST_CASE("Parser rejects unsupported and malformed function calls")
 {
-    requireSyntaxError("sin(1)", 0, "Unsupported function 'sin'");
+    requireSyntaxError("log(1)", 0, "Unsupported function 'log'");
     requireSyntaxError("sqrt", 4, "Expected '(' after function name");
     requireSyntaxError("sqrt()", 5, "Expected expression");
     requireSyntaxError("sqrt(9", 6, "Expected ')'");

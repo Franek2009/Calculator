@@ -101,3 +101,23 @@ TEST_CASE("Lexer reports the position of an unknown character")
                 "Lexical error at position 2: Unknown character '@'");
     }
 }
+
+TEST_CASE("Lexer recognizes trigonometric function names and positions")
+{
+    Calculator::Lexer lexer("sin(0)+cos(0)+tan(0)");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens.size() == 14);
+
+    REQUIRE(tokens[0].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[0].value == "sin");
+    REQUIRE(tokens[0].position == 0);
+
+    REQUIRE(tokens[5].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[5].value == "cos");
+    REQUIRE(tokens[5].position == 7);
+
+    REQUIRE(tokens[10].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[10].value == "tan");
+    REQUIRE(tokens[10].position == 14);
+}

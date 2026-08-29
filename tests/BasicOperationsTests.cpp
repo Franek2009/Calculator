@@ -1,4 +1,7 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+
+#include <cmath>
 #include <stdexcept>
 
 #include "../src/core/math/BasicOperations.h"
@@ -41,4 +44,15 @@ TEST_CASE("Division by zero throws an exception")
 TEST_CASE("Square root of a negative number throws an exception")
 {
     REQUIRE_THROWS_AS(Calculator::BasicOperations::squareRoot(-1), std::invalid_argument);
+}
+
+TEST_CASE("Trigonometric operations work with radians")
+{
+    REQUIRE(Calculator::BasicOperations::sine(0) == 0);
+    REQUIRE(Calculator::BasicOperations::cosine(0) == 1);
+    REQUIRE(Calculator::BasicOperations::tangent(0) == 0);
+
+    REQUIRE(Calculator::BasicOperations::sine(0.5) == Catch::Approx(std::sin(0.5)));
+    REQUIRE(Calculator::BasicOperations::cosine(0.5) == Catch::Approx(std::cos(0.5)));
+    REQUIRE(Calculator::BasicOperations::tangent(0.5) == Catch::Approx(std::tan(0.5)));
 }

@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <stdexcept>
 #include <string>
 
@@ -74,6 +75,19 @@ TEST_CASE("Calculation pipeline evaluates square root function calls")
     REQUIRE(calculate("2*sqrt(9)+1") == 7);
 }
 
+TEST_CASE("Calculation pipeline evaluates trigonometric functions in radians")
+{
+    REQUIRE(calculate("sin(0)") == 0);
+    REQUIRE(calculate("cos(0)") == 1);
+    REQUIRE(calculate("tan(0)") == 0);
+    REQUIRE(calculate("tan(0.5)") == Catch::Approx(std::tan(0.5)));
+    REQUIRE(calculate("sin(cos(0))") == Catch::Approx(std::sin(1.0)));
+    REQUIRE(calculate("sin(-0.5)") == Catch::Approx(std::sin(-0.5)));
+
+    const double identity = calculate("sin(0.5)^2+cos(0.5)^2");
+    REQUIRE(identity == Catch::Approx(1.0));
+}
+
 TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negation")
 {
     REQUIRE(calculate("--2") == 2);
@@ -86,7 +100,7 @@ TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negat
 TEST_CASE("Calculation pipeline reports function errors")
 {
     REQUIRE_THROWS_AS(calculate("sqrt(-1)"), std::invalid_argument);
-    REQUIRE_THROWS_AS(calculate("sin(1)"), std::invalid_argument);
+    REQUIRE_THROWS_AS(calculate("log(1)"), std::invalid_argument);
     REQUIRE_THROWS_AS(calculate("sqrt(9"), std::invalid_argument);
 
     try

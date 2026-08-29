@@ -9,6 +9,9 @@ namespace Calculator::BasicOperations
     double divide(double a, double b);
     double power(double base, double exponent);
     double squareRoot(double number);
+    double sine(double radians);
+    double cosine(double radians);
+    double tangent(double radians);
 }
 
 #endif

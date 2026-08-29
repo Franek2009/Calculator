@@ -1,5 +1,7 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -150,6 +152,18 @@ TEST_CASE("Evaluator evaluates unary negation and square root")
 
     REQUIRE(evaluator.evaluate(unary(Calculator::UnaryOperator::Negate, number(3))) == -3);
     REQUIRE(evaluator.evaluate(function(Calculator::Function::SquareRoot, number(9))) == 3);
+}
+
+TEST_CASE("Evaluator evaluates trigonometric functions in radians")
+{
+    Calculator::Evaluator evaluator;
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Sine, number(0.5))) ==
+            Catch::Approx(std::sin(0.5)));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Cosine, number(0.5))) ==
+            Catch::Approx(std::cos(0.5)));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Tangent, number(0.5))) ==
+            Catch::Approx(std::tan(0.5)));
 }
 
 TEST_CASE("Evaluator propagates square root domain errors")

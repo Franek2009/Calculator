@@ -94,6 +94,15 @@ namespace Calculator
                     {
                         case Function::SquareRoot:
                             return BasicOperations::squareRoot(evaluate(*expression.operand));
+
+                        case Function::Sine:
+                            return BasicOperations::sine(evaluate(*expression.operand));
+
+                        case Function::Cosine:
+                            return BasicOperations::cosine(evaluate(*expression.operand));
+
+                        case Function::Tangent:
+                            return BasicOperations::tangent(evaluate(*expression.operand));
                     }
 
                     throw CalculatorError(

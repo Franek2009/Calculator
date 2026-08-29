@@ -26,6 +26,7 @@ namespace Calculator
         Expression parseUnary();
         Expression parsePower();
         Expression parsePrimary();
+        Function parseFunction(const Token& token) const;
 
         std::size_t errorPosition() const;
         [[noreturn]] void throwSyntaxError(const std::string& description) const;
