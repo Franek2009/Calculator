@@ -340,6 +340,21 @@ namespace Calculator
             return Function::Tangent;
         }
 
+        if (token.value == "asin")
+        {
+            return Function::ArcSine;
+        }
+
+        if (token.value == "acos")
+        {
+            return Function::ArcCosine;
+        }
+
+        if (token.value == "atan")
+        {
+            return Function::ArcTangent;
+        }
+
         if (token.value == "abs")
         {
             return Function::AbsoluteValue;
@@ -375,6 +390,9 @@ namespace Calculator
             case Function::Sine:
             case Function::Cosine:
             case Function::Tangent:
+            case Function::ArcSine:
+            case Function::ArcCosine:
+            case Function::ArcTangent:
             case Function::AbsoluteValue:
             case Function::NaturalLogarithm:
             case Function::Base10Logarithm:

@@ -6,9 +6,9 @@ A compact desktop scientific calculator built with C++20 and Qt 6. It combines a
 
 - Basic arithmetic: addition, subtraction, multiplication, and division
 - Exponentiation, parentheses, and unary negation
-- Scientific functions: `sqrt`, `sin`, `cos`, `tan`, `abs`, `ln`, and `log10`
+- Scientific functions: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `abs`, `ln`, and `log10`
 - Arbitrary-base logarithms with `log(base, value)`
-- Radian and degree modes for trigonometric functions
+- Radian and degree modes for trigonometric functions, including inverse-trigonometric results
 - Mathematical constants `pi` and `e`
 - `Ans` for reusing the last successful result
 - Session calculation history with expression, result, and angle mode

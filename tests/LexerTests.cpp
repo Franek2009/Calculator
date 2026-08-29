@@ -177,3 +177,19 @@ TEST_CASE("Lexer recognizes Ans as an identifier")
     REQUIRE(tokens[0].value == "Ans");
     REQUIRE(tokens[0].position == 0);
 }
+
+TEST_CASE("Lexer recognizes inverse trigonometric names as identifiers")
+{
+    Calculator::Lexer lexer("asin(1)+acos(0)+atan(1)");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[0].value == "asin");
+    REQUIRE(tokens[0].position == 0);
+    REQUIRE(tokens[5].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[5].value == "acos");
+    REQUIRE(tokens[5].position == 8);
+    REQUIRE(tokens[10].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[10].value == "atan");
+    REQUIRE(tokens[10].position == 16);
+}

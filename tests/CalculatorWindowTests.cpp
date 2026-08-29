@@ -18,6 +18,9 @@ private slots:
     void insertsTextAtTheCursorAndReplacesASelection();
     void insertsFunctionsWithExpectedCursorPlacement();
     void scientificLabelsInsertParserSyntax();
+    void inverseTrigButtonsInsertParserSyntax();
+    void inverseTrigCalculatesWithAngleModesAndAns();
+    void inverseTrigErrorsAndHistoryPreserveDiagnosticsAndMode();
     void powerAndSquareButtonsUseExistingGrammar();
     void insertsPiAtTheCursor();
     void insertsEAndGeneralLogarithmSyntax();
@@ -205,6 +208,120 @@ void CalculatorWindowTests::scientificLabelsInsertParserSyntax()
     QTest::mouseClick(absoluteValueButton, Qt::LeftButton);
     QCOMPARE(input->text(), "abs(-2)");
     QCOMPARE(input->cursorPosition(), 7);
+}
+
+void CalculatorWindowTests::inverseTrigButtonsInsertParserSyntax()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* arcSineButton = window.findChild<QPushButton*>("arcSineButton");
+    auto* arcCosineButton = window.findChild<QPushButton*>("arcCosineButton");
+    auto* arcTangentButton = window.findChild<QPushButton*>("arcTangentButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(arcSineButton);
+    QVERIFY(arcCosineButton);
+    QVERIFY(arcTangentButton);
+    QCOMPARE(arcSineButton->text(), QStringLiteral("sin⁻¹"));
+    QCOMPARE(arcCosineButton->text(), QStringLiteral("cos⁻¹"));
+    QCOMPARE(arcTangentButton->text(), QStringLiteral("tan⁻¹"));
+
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(arcSineButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "asin()");
+    QCOMPARE(input->cursorPosition(), 5);
+
+    input->setText("0.5");
+    input->selectAll();
+    QTest::mouseClick(arcCosineButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "acos(0.5)");
+    QCOMPARE(input->cursorPosition(), 9);
+
+    input->setText("1");
+    input->selectAll();
+    QTest::mouseClick(arcTangentButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "atan(1)");
+    QCOMPARE(input->cursorPosition(), 7);
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::inverseTrigCalculatesWithAngleModesAndAns()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+    auto* radiansButton = window.findChild<QPushButton*>("radiansButton");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(degreesButton);
+    QVERIFY(radiansButton);
+
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    input->setText("asin(1)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 90");
+
+    input->setText("1");
+    QTest::keyClick(input, Qt::Key_Return);
+    input->setText("asin(Ans)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 90");
+
+    QTest::mouseClick(radiansButton, Qt::LeftButton);
+    input->setText("asin(1)");
+    QTest::keyClick(input, Qt::Key_Return);
+    const double radians = message->text().mid(QString("Result: ").size()).toDouble();
+    QVERIFY(std::abs(radians - std::numbers::pi / 2.0) < 1e-12);
+}
+
+void CalculatorWindowTests::inverseTrigErrorsAndHistoryPreserveDiagnosticsAndMode()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+    auto* radiansButton = window.findChild<QPushButton*>("radiansButton");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(degreesButton);
+    QVERIFY(radiansButton);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+
+    input->setText("asin(2)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(),
+             "Evaluation error at position 1: Arc sine argument must be between -1 and 1");
+    QCOMPARE(input->selectionStart(), 0);
+    QCOMPARE(input->selectedText(), "a");
+    QCOMPARE(history->count(), 0);
+
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    input->setText("asin(1)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 1);
+    QVERIFY(history->item(0)->text().startsWith("asin(1)\n= 90 · DEG"));
+
+    QTest::mouseClick(radiansButton, Qt::LeftButton);
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    const QRect itemRect = history->visualItemRect(history->item(0));
+    QTest::mouseClick(history->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      itemRect.center());
+    QCOMPARE(input->text(), "asin(1)");
+    QVERIFY(degreesButton->isChecked());
+    QVERIFY(!radiansButton->isChecked());
+    QVERIFY(message->text().isEmpty());
+    QVERIFY(input->hasFocus());
 }
 
 void CalculatorWindowTests::powerAndSquareButtonsUseExistingGrammar()

@@ -12,6 +12,9 @@ namespace Calculator::BasicOperations
     double sine(double radians);
     double cosine(double radians);
     double tangent(double radians);
+    double arcSine(double value);
+    double arcCosine(double value);
+    double arcTangent(double value);
     double absoluteValue(double number);
     double naturalLogarithm(double number);
     double base10Logarithm(double number);

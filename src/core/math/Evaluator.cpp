@@ -20,6 +20,9 @@ namespace Calculator
                 case Function::Sine:
                 case Function::Cosine:
                 case Function::Tangent:
+                case Function::ArcSine:
+                case Function::ArcCosine:
+                case Function::ArcTangent:
                 case Function::AbsoluteValue:
                 case Function::NaturalLogarithm:
                 case Function::Base10Logarithm:
@@ -182,6 +185,21 @@ namespace Calculator
                                 angleInRadians(evaluate(expression.arguments[0]))
                             );
 
+                        case Function::ArcSine:
+                            return angleFromRadians(
+                                BasicOperations::arcSine(evaluate(expression.arguments[0]))
+                            );
+
+                        case Function::ArcCosine:
+                            return angleFromRadians(
+                                BasicOperations::arcCosine(evaluate(expression.arguments[0]))
+                            );
+
+                        case Function::ArcTangent:
+                            return angleFromRadians(
+                                BasicOperations::arcTangent(evaluate(expression.arguments[0]))
+                            );
+
                         case Function::AbsoluteValue:
                             return BasicOperations::absoluteValue(evaluate(expression.arguments[0]));
 
@@ -236,5 +254,15 @@ namespace Calculator
         }
 
         return angle;
+    }
+
+    double Evaluator::angleFromRadians(double radians) const
+    {
+        if (context.angleMode == AngleMode::Degrees)
+        {
+            return radians * 180.0 / std::numbers::pi;
+        }
+
+        return radians;
     }
 }

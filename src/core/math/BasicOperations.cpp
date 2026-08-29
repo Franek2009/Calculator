@@ -60,6 +60,36 @@ namespace Calculator::BasicOperations
         return std::tan(radians);
     }
 
+    double arcSine(double value)
+    {
+        if (!std::isfinite(value) || value < -1 || value > 1)
+        {
+            throw std::invalid_argument("Arc sine argument must be between -1 and 1");
+        }
+
+        return std::asin(value);
+    }
+
+    double arcCosine(double value)
+    {
+        if (!std::isfinite(value) || value < -1 || value > 1)
+        {
+            throw std::invalid_argument("Arc cosine argument must be between -1 and 1");
+        }
+
+        return std::acos(value);
+    }
+
+    double arcTangent(double value)
+    {
+        if (!std::isfinite(value))
+        {
+            throw std::invalid_argument("Arc tangent argument must be finite");
+        }
+
+        return std::atan(value);
+    }
+
     double absoluteValue(double number)
     {
         return std::abs(number);

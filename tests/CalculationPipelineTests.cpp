@@ -139,6 +139,63 @@ TEST_CASE("Calculation pipeline supports radian and degree angle modes")
             Catch::Approx(1.0).epsilon(1e-12));
 }
 
+TEST_CASE("Calculation pipeline supports inverse trigonometry in both angle modes")
+{
+    REQUIRE(calculate("asin(1)") == Catch::Approx(std::numbers::pi / 2.0));
+    REQUIRE(calculate("acos(0)") == Catch::Approx(std::numbers::pi / 2.0));
+    REQUIRE(calculate("atan(1)") == Catch::Approx(std::numbers::pi / 4.0));
+
+    REQUIRE(calculate("asin(1)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(90.0).epsilon(1e-12));
+    REQUIRE(calculate("acos(0)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(90.0).epsilon(1e-12));
+    REQUIRE(calculate("atan(1)", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(45.0).epsilon(1e-12));
+}
+
+TEST_CASE("Calculation pipeline composes forward and inverse trigonometry in degrees")
+{
+    REQUIRE(calculate("sin(asin(0.5))", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(0.5).epsilon(1e-12));
+    REQUIRE(calculate("cos(acos(0.5))", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(0.5).epsilon(1e-12));
+    REQUIRE(calculate("tan(atan(1))", Calculator::AngleMode::Degrees) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+}
+
+TEST_CASE("Calculation pipeline reports inverse trigonometric domains at function names")
+{
+    const auto requireDomainError = [](const std::string& input,
+                                       std::size_t position,
+                                       const std::string& description)
+    {
+        try
+        {
+            calculate(input);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(error.position() == position);
+            REQUIRE(std::string(error.what()) ==
+                    "Evaluation error at position " + std::to_string(position + 1) +
+                    ": " + description);
+        }
+    };
+
+    requireDomainError("asin(2)", 0, "Arc sine argument must be between -1 and 1");
+    requireDomainError("2+acos(-2)", 2, "Arc cosine argument must be between -1 and 1");
+}
+
+TEST_CASE("Calculation pipeline evaluates inverse trigonometry with Ans")
+{
+    REQUIRE(calculate("asin(Ans)", Calculator::EvaluationContext{
+                Calculator::AngleMode::Degrees,
+                1.0
+            }) == Catch::Approx(90.0).epsilon(1e-12));
+}
+
 TEST_CASE("Calculation pipeline evaluates expressions with Ans")
 {
     const Calculator::EvaluationContext context{

@@ -217,6 +217,75 @@ TEST_CASE("Evaluator converts degrees for trigonometric functions")
             Catch::Approx(1.0).epsilon(1e-12));
 }
 
+TEST_CASE("Evaluator returns inverse trigonometric results in radians")
+{
+    Calculator::Evaluator evaluator;
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcSine, number(1))) ==
+            Catch::Approx(std::numbers::pi / 2.0));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcCosine, number(0))) ==
+            Catch::Approx(std::numbers::pi / 2.0));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcTangent, number(1))) ==
+            Catch::Approx(std::numbers::pi / 4.0));
+}
+
+TEST_CASE("Evaluator converts inverse trigonometric results to degrees")
+{
+    Calculator::Evaluator evaluator(Calculator::AngleMode::Degrees);
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcSine, number(1))) ==
+            Catch::Approx(90.0).epsilon(1e-12));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcCosine, number(0))) ==
+            Catch::Approx(90.0).epsilon(1e-12));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcTangent, number(1))) ==
+            Catch::Approx(45.0).epsilon(1e-12));
+}
+
+TEST_CASE("Evaluator reports inverse trigonometric domain errors")
+{
+    Calculator::Evaluator evaluator;
+    const auto requireDomainError = [&evaluator](Calculator::Function functionName,
+                                                  double argument,
+                                                  const std::string& description)
+    {
+        auto expression = function(functionName, number(argument));
+        expression.position = 3;
+
+        try
+        {
+            evaluator.evaluate(expression);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(error.position() == 3);
+            REQUIRE(std::string(error.what()) ==
+                    "Evaluation error at position 4: " + description);
+        }
+    };
+
+    requireDomainError(Calculator::Function::ArcSine, 2,
+                       "Arc sine argument must be between -1 and 1");
+    requireDomainError(Calculator::Function::ArcCosine, -2,
+                       "Arc cosine argument must be between -1 and 1");
+}
+
+TEST_CASE("Evaluator combines inverse trigonometry with Ans")
+{
+    Calculator::Evaluator evaluator(Calculator::EvaluationContext{
+        Calculator::AngleMode::Degrees,
+        1.0
+    });
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcSine,
+                                        constant(Calculator::Constant::Ans))) ==
+            Catch::Approx(90.0).epsilon(1e-12));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::ArcTangent,
+                                        constant(Calculator::Constant::Ans))) ==
+            Catch::Approx(45.0).epsilon(1e-12));
+}
+
 TEST_CASE("Evaluator evaluates constants, absolute value, and logarithms")
 {
     Calculator::Evaluator evaluator;

@@ -30,6 +30,7 @@ namespace Calculator
 
     private:
         double angleInRadians(double angle) const;
+        double angleFromRadians(double radians) const;
 
         EvaluationContext context;
     };

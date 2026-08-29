@@ -262,9 +262,34 @@ TEST_CASE("Parser recognizes trigonometric function calls")
     requireFunction("sin(0)", Calculator::Function::Sine);
     requireFunction("cos(0)", Calculator::Function::Cosine);
     requireFunction("tan(0)", Calculator::Function::Tangent);
+    requireFunction("asin(1)", Calculator::Function::ArcSine);
+    requireFunction("acos(0)", Calculator::Function::ArcCosine);
+    requireFunction("atan(1)", Calculator::Function::ArcTangent);
     requireFunction("abs(0)", Calculator::Function::AbsoluteValue);
     requireFunction("ln(1)", Calculator::Function::NaturalLogarithm);
     requireFunction("log10(1)", Calculator::Function::Base10Logarithm);
+}
+
+TEST_CASE("Parser nests forward and inverse trigonometric calls")
+{
+    Calculator::Lexer lexer("sin(asin(0.5))");
+    Calculator::Parser parser(lexer.tokenize());
+    const auto result = parser.parse();
+
+    REQUIRE(result.function == Calculator::Function::Sine);
+    REQUIRE(result.arguments[0].function == Calculator::Function::ArcSine);
+    REQUIRE(result.arguments[0].arguments[0].value == 0.5);
+}
+
+TEST_CASE("Parser validates inverse trigonometric syntax")
+{
+    requireSyntaxError("asin()", 0, "Function 'asin' expects 1 argument");
+    requireSyntaxError("asin(1,2)", 0, "Function 'asin' expects 1 argument");
+    requireSyntaxError("asin", 4, "Expected '(' after function name");
+    requireSyntaxError("ASIN(1)", 0, "Unknown identifier 'ASIN'");
+    requireSyntaxError("Asin(1)", 0, "Unknown identifier 'Asin'");
+    requireSyntaxError("2asin(1)", 1, "Unexpected token 'asin' after expression");
+    requireSyntaxError("acos(1", 6, "Expected ')'");
 }
 
 TEST_CASE("Parser nests trigonometric function calls")
