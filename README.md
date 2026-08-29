@@ -19,7 +19,7 @@ A compact desktop scientific calculator built with C++20 and Qt 6. It combines a
 
 ## Screenshot
 
-_A screenshot of the application will be added before the first public release._
+![Calculator application](docs/calculator.png)
 
 ## Architecture
 
@@ -88,6 +88,10 @@ Standard text-editing shortcuts supported by `QLineEdit` continue to work in the
 - Function and constant names are case-sensitive; the previous result is spelled `Ans`.
 - User-defined variables and assignments are not supported.
 - Percentage is context-free: `200+10%` evaluates to `200.1`, not `220`.
+
+## Project status
+
+The project is complete in its current scope and is considered ready for version 1.0.
 
 ## License
 
