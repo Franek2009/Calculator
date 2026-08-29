@@ -5,7 +5,7 @@ project(Calculator LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
 
 add_library(CalculatorCore STATIC
     src/core/math/BasicOperations.cpp
@@ -20,12 +20,17 @@ target_include_directories(CalculatorCore
         ${CMAKE_CURRENT_SOURCE_DIR}/src/core/math
 )
 
-add_executable(Calculator
-    src/main.cpp
+add_library(CalculatorUi STATIC
     src/ui/CalculatorWindow.cpp
 )
 
-target_link_libraries(Calculator PRIVATE CalculatorCore Qt6::Widgets)
+target_link_libraries(CalculatorUi PUBLIC CalculatorCore Qt6::Widgets)
+
+add_executable(Calculator
+    src/main.cpp
+)
+
+target_link_libraries(Calculator PRIVATE CalculatorUi)
 
 include(CTest)
 enable_testing()
@@ -48,3 +53,20 @@ target_link_libraries(CalculatorTests
 
 include(Catch)
 catch_discover_tests(CalculatorTests)
+
+add_executable(CalculatorUiTests
+    tests/CalculatorWindowTests.cpp
+)
+
+target_link_libraries(CalculatorUiTests
+    PRIVATE
+        CalculatorUi
+        Qt6::Test
+)
+
+set_target_properties(CalculatorUiTests PROPERTIES AUTOMOC ON)
+
+add_test(NAME CalculatorUiTests COMMAND CalculatorUiTests)
+set_tests_properties(CalculatorUiTests PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QPA_PLATFORMTHEME="
+)
