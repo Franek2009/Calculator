@@ -89,4 +89,4 @@ Standard text-editing shortcuts supported by `QLineEdit` continue to work in the
 
 ## License
 
-This project does not currently include a license. A license should be selected before the first public release.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
