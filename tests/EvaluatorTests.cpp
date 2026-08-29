@@ -230,6 +230,46 @@ TEST_CASE("Evaluator evaluates constants, absolute value, and logarithms")
     REQUIRE(evaluator.evaluate(function(Calculator::Function::Base10Logarithm, number(100))) == 2);
 }
 
+TEST_CASE("Evaluator resolves Ans from its evaluation context")
+{
+    Calculator::EvaluationContext context;
+    context.answer = 5.0;
+    Calculator::Evaluator evaluator(context);
+
+    REQUIRE(evaluator.evaluate(constant(Calculator::Constant::Ans)) == 5.0);
+    REQUIRE(context.answer == 5.0);
+}
+
+TEST_CASE("Evaluator reports unavailable Ans at its source position")
+{
+    Calculator::Evaluator evaluator;
+
+    try
+    {
+        evaluator.evaluate(constant(Calculator::Constant::Ans, 4));
+        FAIL("Expected an evaluation error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+        REQUIRE(error.position() == 4);
+        REQUIRE(std::string(error.what()) ==
+                "Evaluation error at position 5: Ans is not available");
+    }
+}
+
+TEST_CASE("Evaluator combines Ans with degree angle mode")
+{
+    Calculator::Evaluator evaluator(Calculator::EvaluationContext{
+        Calculator::AngleMode::Degrees,
+        90.0
+    });
+
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Sine,
+                                        constant(Calculator::Constant::Ans))) ==
+            Catch::Approx(1.0).epsilon(1e-12));
+}
+
 TEST_CASE("Evaluator evaluates logarithms with arbitrary bases")
 {
     Calculator::Evaluator evaluator;

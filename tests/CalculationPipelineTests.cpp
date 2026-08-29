@@ -24,6 +24,17 @@ namespace
 
         return evaluator.evaluate(expression);
     }
+
+    double calculate(const std::string& input,
+                     const Calculator::EvaluationContext& context)
+    {
+        Calculator::Lexer lexer(input);
+        Calculator::Parser parser(lexer.tokenize());
+        const auto expression = parser.parse();
+        Calculator::Evaluator evaluator(context);
+
+        return evaluator.evaluate(expression);
+    }
 }
 
 TEST_CASE("Calculation pipeline respects multiplication precedence")
@@ -126,6 +137,48 @@ TEST_CASE("Calculation pipeline supports radian and degree angle modes")
             Catch::Approx(1.0).epsilon(1e-12));
     REQUIRE(calculate("sin(90)") !=
             Catch::Approx(1.0).epsilon(1e-12));
+}
+
+TEST_CASE("Calculation pipeline evaluates expressions with Ans")
+{
+    const Calculator::EvaluationContext context{
+        Calculator::AngleMode::Radians,
+        8.0
+    };
+
+    REQUIRE(calculate("Ans", context) == 8.0);
+    REQUIRE(calculate("Ans+2", context) == 10.0);
+    REQUIRE(calculate("2*Ans", context) == 16.0);
+    REQUIRE(calculate("sqrt(Ans)", context) == Catch::Approx(std::sqrt(8.0)));
+    REQUIRE(calculate("log(2,Ans)", context) == 3.0);
+}
+
+TEST_CASE("Calculation pipeline combines Ans with both angle modes")
+{
+    REQUIRE(calculate("sin(Ans)", Calculator::EvaluationContext{
+                Calculator::AngleMode::Radians,
+                std::numbers::pi / 2.0
+            }) == Catch::Approx(1.0).epsilon(1e-12));
+    REQUIRE(calculate("sin(Ans)", Calculator::EvaluationContext{
+                Calculator::AngleMode::Degrees,
+                90.0
+            }) == Catch::Approx(1.0).epsilon(1e-12));
+}
+
+TEST_CASE("Calculation pipeline reports unavailable Ans")
+{
+    try
+    {
+        calculate("2+Ans");
+        FAIL("Expected an evaluation error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+        REQUIRE(error.position() == 2);
+        REQUIRE(std::string(error.what()) ==
+                "Evaluation error at position 3: Ans is not available");
+    }
 }
 
 TEST_CASE("Calculation pipeline reports logarithm domain errors")

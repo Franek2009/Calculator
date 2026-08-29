@@ -6,6 +6,7 @@
 #include <numbers>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace Calculator
 {
@@ -32,8 +33,18 @@ namespace Calculator
         }
     }
 
+    Evaluator::Evaluator()
+        : Evaluator(EvaluationContext{})
+    {
+    }
+
     Evaluator::Evaluator(AngleMode angleMode)
-        : angleMode(angleMode)
+        : Evaluator(EvaluationContext{angleMode, std::nullopt})
+    {
+    }
+
+    Evaluator::Evaluator(EvaluationContext context)
+        : context(std::move(context))
     {
     }
 
@@ -54,6 +65,18 @@ namespace Calculator
 
                         case Constant::E:
                             return std::numbers::e;
+
+                        case Constant::Ans:
+                            if (!context.answer)
+                            {
+                                throw CalculatorError(
+                                    ErrorCategory::Evaluation,
+                                    expression.position,
+                                    "Ans is not available"
+                                );
+                            }
+
+                            return *context.answer;
                     }
 
                     throw CalculatorError(
@@ -207,7 +230,7 @@ namespace Calculator
 
     double Evaluator::angleInRadians(double angle) const
     {
-        if (angleMode == AngleMode::Degrees)
+        if (context.angleMode == AngleMode::Degrees)
         {
             return angle * std::numbers::pi / 180.0;
         }

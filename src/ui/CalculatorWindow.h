@@ -2,12 +2,16 @@
 #define CALCULATOR_WINDOW_H
 
 #include <cstddef>
+#include <optional>
 
 #include <QMainWindow>
 
 class QLabel;
 class QLineEdit;
+class QListWidget;
+class QListWidgetItem;
 class QPushButton;
+class QFrame;
 class QStackedWidget;
 class QString;
 class QWidget;
@@ -38,6 +42,12 @@ namespace CalculatorUI
         void switchToFunctionsMode();
         void switchToRadians();
         void switchToDegrees();
+        void toggleHistory(bool visible);
+        void addHistoryEntry(const QString& expression,
+                             double result,
+                             Calculator::AngleMode mode);
+        void recallHistoryEntry(QListWidgetItem* item);
+        void clearHistory();
         void showCalculationError(const Calculator::CalculatorError& error);
         void setMessage(const QString& message, const QString& type);
         QPushButton* createKeyButton(const QString& label,
@@ -55,7 +65,11 @@ namespace CalculatorUI
         QPushButton* functionsModeButton;
         QPushButton* radiansButton;
         QPushButton* degreesButton;
+        QPushButton* historyButton;
+        QFrame* historyPanel;
+        QListWidget* historyList;
         Calculator::AngleMode angleMode;
+        std::optional<double> lastAnswer;
     };
 }
 

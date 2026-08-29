@@ -1,5 +1,6 @@
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QTest>
@@ -21,6 +22,12 @@ private slots:
     void insertsPiAtTheCursor();
     void insertsEAndGeneralLogarithmSyntax();
     void switchesAngleModesAndCalculatesInDegrees();
+    void ansButtonsInsertTheAnswerSymbol();
+    void successfulCalculationsUpdateAnsAndErrorsPreserveIt();
+    void historyStoresOnlySuccessfulCalculationsAndRecallsTheirMode();
+    void recalledHistoryExpressionsUseTheCurrentAns();
+    void historyCanBeClearedWithoutClearingAns();
+    void historyKeepsOnlyTheHundredNewestEntries();
     void screenBackspaceMatchesLineEditBehavior();
     void switchesMutuallyExclusiveKeypadModesWithoutLosingInput();
     void clearsStaleMessageOnlyWhenTextChanges();
@@ -330,6 +337,223 @@ void CalculatorWindowTests::switchesAngleModesAndCalculatesInDegrees()
     QCOMPARE(input->text(), expression);
     QVERIFY(message->text().isEmpty());
     QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::ansButtonsInsertTheAnswerSymbol()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* basicAnsButton = window.findChild<QPushButton*>("basicAnsButton");
+    auto* functionsAnsButton = window.findChild<QPushButton*>("functionsAnsButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(basicAnsButton);
+    QVERIFY(functionsAnsButton);
+
+    QTest::mouseClick(basicAnsButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "Ans");
+    QCOMPARE(input->cursorPosition(), 3);
+
+    input->setText("2*3");
+    input->setSelection(2, 1);
+    QTest::mouseClick(basicAnsButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "2*Ans");
+    QCOMPARE(input->cursorPosition(), 5);
+
+    input->clear();
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+    QTest::mouseClick(functionsAnsButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "Ans");
+    QCOMPARE(input->cursorPosition(), 3);
+}
+
+void CalculatorWindowTests::successfulCalculationsUpdateAnsAndErrorsPreserveIt()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* history = window.findChild<QListWidget*>("historyList");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(history);
+    QVERIFY(degreesButton);
+
+    input->setText("Ans");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Evaluation error at position 1: Ans is not available");
+    QCOMPARE(input->selectionStart(), 0);
+    QCOMPARE(input->selectedText(), "A");
+    QCOMPARE(history->count(), 0);
+
+    input->setText("2+3");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 5");
+
+    input->setText("Ans*4");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 20");
+
+    input->setText("1/0");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 2);
+
+    input->setText("2@3");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 2);
+
+    input->setText("2+");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 2);
+
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    input->setText("Ans+1");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 21");
+    QCOMPARE(history->count(), 3);
+}
+
+void CalculatorWindowTests::historyStoresOnlySuccessfulCalculationsAndRecallsTheirMode()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+    auto* radiansButton = window.findChild<QPushButton*>("radiansButton");
+    auto* degreesButton = window.findChild<QPushButton*>("degreesButton");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+    QVERIFY(radiansButton);
+    QVERIFY(degreesButton);
+    QVERIFY(!history->isVisible());
+
+    QTest::mouseClick(degreesButton, Qt::LeftButton);
+    input->setText("sin(90)");
+    QTest::keyClick(input, Qt::Key_Return);
+
+    QTest::mouseClick(radiansButton, Qt::LeftButton);
+    input->setText("2+3");
+    QTest::keyClick(input, Qt::Key_Return);
+
+    input->setText("2+");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 2);
+    QVERIFY(history->item(0)->text().startsWith("2+3\n= 5 · RAD"));
+    QVERIFY(history->item(1)->text().startsWith("sin(90)\n= 1 · DEG"));
+
+    const QString currentExpression = input->text();
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QVERIFY(historyButton->isChecked());
+    QVERIFY(history->isVisible());
+    QCOMPARE(input->text(), currentExpression);
+    QVERIFY(input->hasFocus());
+
+    const QRect itemRect = history->visualItemRect(history->item(1));
+    QTest::mouseClick(history->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      itemRect.center());
+    QCOMPARE(input->text(), "sin(90)");
+    QVERIFY(degreesButton->isChecked());
+    QVERIFY(!radiansButton->isChecked());
+    QVERIFY(message->text().isEmpty());
+    QVERIFY(input->hasFocus());
+
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QVERIFY(!historyButton->isChecked());
+    QVERIFY(!history->isVisible());
+    QCOMPARE(input->text(), "sin(90)");
+}
+
+void CalculatorWindowTests::recalledHistoryExpressionsUseTheCurrentAns()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(historyButton);
+    QVERIFY(history);
+
+    input->setText("5");
+    QTest::keyClick(input, Qt::Key_Return);
+    input->setText("Ans*4");
+    QTest::keyClick(input, Qt::Key_Return);
+    input->setText("2");
+    QTest::keyClick(input, Qt::Key_Return);
+
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QVERIFY(history->item(1)->text().startsWith("Ans*4"));
+    const QRect itemRect = history->visualItemRect(history->item(1));
+    QTest::mouseClick(history->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      itemRect.center());
+    QCOMPARE(input->text(), "Ans*4");
+
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 8");
+}
+
+void CalculatorWindowTests::historyCanBeClearedWithoutClearingAns()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* history = window.findChild<QListWidget*>("historyList");
+    auto* historyButton = window.findChild<QPushButton*>("historyButton");
+    auto* clearHistoryButton = window.findChild<QPushButton*>("clearHistoryButton");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(history);
+    QVERIFY(historyButton);
+    QVERIFY(clearHistoryButton);
+
+    input->setText("10");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(history->count(), 1);
+
+    QTest::mouseClick(historyButton, Qt::LeftButton);
+    QTest::mouseClick(clearHistoryButton, Qt::LeftButton);
+    QCOMPARE(history->count(), 0);
+    QVERIFY(input->hasFocus());
+
+    input->setText("Ans+1");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 11");
+}
+
+void CalculatorWindowTests::historyKeepsOnlyTheHundredNewestEntries()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(history);
+
+    for (int value = 0; value < 101; ++value)
+    {
+        input->setText(QString::number(value));
+        QTest::keyClick(input, Qt::Key_Return);
+    }
+
+    QCOMPARE(history->count(), 100);
+    QVERIFY(history->item(0)->text().startsWith("100\n= 100"));
+    QVERIFY(history->item(99)->text().startsWith("1\n= 1"));
 }
 
 void CalculatorWindowTests::screenBackspaceMatchesLineEditBehavior()

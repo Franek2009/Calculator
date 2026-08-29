@@ -201,9 +201,22 @@ namespace Calculator
             const Token& identifierToken = tokens[current];
             const std::size_t position = identifierToken.position;
 
-            if (identifierToken.value == "pi" || identifierToken.value == "e")
+            if (identifierToken.value == "pi" ||
+                identifierToken.value == "e" ||
+                identifierToken.value == "Ans")
             {
                 current++;
+
+                Constant constant = Constant::Ans;
+
+                if (identifierToken.value == "pi")
+                {
+                    constant = Constant::Pi;
+                }
+                else if (identifierToken.value == "e")
+                {
+                    constant = Constant::E;
+                }
 
                 return {
                     ExpressionType::Constant,
@@ -215,7 +228,7 @@ namespace Calculator
                     Function::SquareRoot,
                     nullptr,
                     position,
-                    identifierToken.value == "pi" ? Constant::Pi : Constant::E
+                    constant
                 };
             }
 

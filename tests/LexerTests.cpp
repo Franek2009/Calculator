@@ -166,3 +166,14 @@ TEST_CASE("Lexer recognizes e, log, and argument separators")
     REQUIRE(tokens[4].value == ",");
     REQUIRE(tokens[4].position == 7);
 }
+
+TEST_CASE("Lexer recognizes Ans as an identifier")
+{
+    Calculator::Lexer lexer("Ans+2");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens.size() == 3);
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[0].value == "Ans");
+    REQUIRE(tokens[0].position == 0);
+}

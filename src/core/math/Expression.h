@@ -45,7 +45,8 @@ namespace Calculator
     enum class Constant
     {
         Pi,
-        E
+        E,
+        Ans
     };
 
     struct Expression

@@ -297,6 +297,30 @@ TEST_CASE("Parser recognizes symbolic constants")
     REQUIRE(eResult.constant == Calculator::Constant::E);
 }
 
+TEST_CASE("Parser recognizes Ans in expressions and function arguments")
+{
+    const auto parse = [](const std::string& input)
+    {
+        Calculator::Lexer lexer(input);
+        Calculator::Parser parser(lexer.tokenize());
+        return parser.parse();
+    };
+
+    const auto answer = parse("Ans");
+    REQUIRE(answer.type == Calculator::ExpressionType::Constant);
+    REQUIRE(answer.constant == Calculator::Constant::Ans);
+    REQUIRE(answer.position == 0);
+
+    const auto sum = parse("Ans+2");
+    REQUIRE(sum.left->constant == Calculator::Constant::Ans);
+
+    const auto squareRoot = parse("sqrt(Ans)");
+    REQUIRE(squareRoot.arguments[0].constant == Calculator::Constant::Ans);
+
+    const auto logarithm = parse("log(2,Ans)");
+    REQUIRE(logarithm.arguments[1].constant == Calculator::Constant::Ans);
+}
+
 TEST_CASE("Parser nests logarithm and absolute value calls")
 {
     Calculator::Lexer lexer("ln(abs(-2))");
@@ -366,6 +390,10 @@ TEST_CASE("Parser rejects constants without explicit operators")
     requireSyntaxError("2pi", 1, "Unexpected token 'pi' after expression");
     requireSyntaxError("e2", 0, "Unknown identifier 'e2'");
     requireSyntaxError("2e", 1, "Unexpected token 'e' after expression");
+    requireSyntaxError("2Ans", 1, "Unexpected token 'Ans' after expression");
+    requireSyntaxError("Ans()", 3, "Unexpected token '(' after expression");
+    requireSyntaxError("ans", 0, "Unknown identifier 'ans'");
+    requireSyntaxError("ANS", 0, "Unknown identifier 'ANS'");
 }
 
 TEST_CASE("Parser builds function calls with general argument lists")

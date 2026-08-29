@@ -13,6 +13,8 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QListWidgetItem>
 #include <QPushButton>
 #include <QShortcut>
 #include <QSizePolicy>
@@ -20,6 +22,7 @@
 #include <QStyle>
 #include <QString>
 #include <QVBoxLayout>
+#include <QVariant>
 #include <QWidget>
 
 #include <algorithm>
@@ -30,6 +33,12 @@ namespace CalculatorUI
 {
     namespace
     {
+        constexpr int historyPanelWidth = 280;
+        constexpr int historyEntryLimit = 100;
+        constexpr int expressionRole = Qt::UserRole;
+        constexpr int resultRole = Qt::UserRole + 1;
+        constexpr int angleModeRole = Qt::UserRole + 2;
+
         constexpr auto windowStyle = R"(
             QMainWindow, QWidget#centralWidget {
                 background-color: #10151c;
@@ -39,6 +48,33 @@ namespace CalculatorUI
                 background-color: #151c24;
                 border: 1px solid #303a47;
                 border-radius: 12px;
+            }
+            QFrame#historyPanel {
+                background-color: #151c24;
+                border-left: 1px solid #303a47;
+            }
+            QLabel#historyTitle {
+                color: #e7edf5;
+                font-size: 18px;
+                font-weight: 600;
+            }
+            QListWidget#historyList {
+                border: 1px solid #303a47;
+                border-radius: 8px;
+                background-color: #10151c;
+                color: #dce5ef;
+                outline: none;
+            }
+            QListWidget#historyList::item {
+                padding: 9px;
+                border-bottom: 1px solid #27313d;
+            }
+            QListWidget#historyList::item:hover {
+                background-color: #202b38;
+            }
+            QListWidget#historyList::item:selected {
+                background-color: #234d7d;
+                color: white;
             }
             QLineEdit#expressionInput {
                 min-height: 54px;
@@ -118,7 +154,12 @@ namespace CalculatorUI
 
         auto* centralWidget = new QWidget(this);
         centralWidget->setObjectName("centralWidget");
-        auto* layout = new QVBoxLayout(centralWidget);
+        auto* mainLayout = new QHBoxLayout(centralWidget);
+        mainLayout->setContentsMargins(0, 0, 0, 0);
+        mainLayout->setSpacing(0);
+
+        auto* calculatorPanel = new QWidget(centralWidget);
+        auto* layout = new QVBoxLayout(calculatorPanel);
         layout->setContentsMargins(20, 20, 20, 20);
         layout->setSpacing(12);
 
@@ -147,8 +188,10 @@ namespace CalculatorUI
         basicModeButton = createKeyButton("Basic", "basicModeButton", "mode", centralWidget);
         functionsModeButton = createKeyButton("Functions", "functionsModeButton", "mode",
                                               centralWidget);
+        historyButton = createKeyButton("History", "historyButton", "mode", centralWidget);
         basicModeButton->setCheckable(true);
         functionsModeButton->setCheckable(true);
+        historyButton->setCheckable(true);
 
         auto* modeGroup = new QButtonGroup(this);
         modeGroup->setExclusive(true);
@@ -169,6 +212,7 @@ namespace CalculatorUI
 
         modeLayout->addWidget(basicModeButton);
         modeLayout->addWidget(functionsModeButton);
+        modeLayout->addWidget(historyButton);
         modeLayout->addStretch();
         modeLayout->addWidget(radiansButton);
         modeLayout->addWidget(degreesButton);
@@ -182,6 +226,32 @@ namespace CalculatorUI
         layout->addWidget(displayPanel);
         layout->addLayout(modeLayout);
         layout->addWidget(keypadStack, 1);
+
+        historyPanel = new QFrame(centralWidget);
+        historyPanel->setObjectName("historyPanel");
+        historyPanel->setFixedWidth(historyPanelWidth);
+        auto* historyLayout = new QVBoxLayout(historyPanel);
+        historyLayout->setContentsMargins(14, 20, 14, 20);
+        historyLayout->setSpacing(10);
+
+        auto* historyTitle = new QLabel("History", historyPanel);
+        historyTitle->setObjectName("historyTitle");
+        auto* clearHistoryButton = createKeyButton("Clear history", "clearHistoryButton",
+                                                   "clear", historyPanel);
+        clearHistoryButton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+        historyList = new QListWidget(historyPanel);
+        historyList->setObjectName("historyList");
+        historyList->setWordWrap(true);
+        historyList->setSpacing(2);
+
+        historyLayout->addWidget(historyTitle);
+        historyLayout->addWidget(historyList, 1);
+        historyLayout->addWidget(clearHistoryButton);
+        historyPanel->hide();
+
+        mainLayout->addWidget(calculatorPanel, 1);
+        mainLayout->addWidget(historyPanel);
 
         setCentralWidget(centralWidget);
 
@@ -197,6 +267,12 @@ namespace CalculatorUI
                 [this]() { switchToRadians(); });
         connect(degreesButton, &QPushButton::clicked, this,
                 [this]() { switchToDegrees(); });
+        connect(historyButton, &QPushButton::toggled, this,
+                [this](bool visible) { toggleHistory(visible); });
+        connect(clearHistoryButton, &QPushButton::clicked, this,
+                [this]() { clearHistory(); });
+        connect(historyList, &QListWidget::itemClicked, this,
+                [this](QListWidgetItem* item) { recallHistoryEntry(item); });
 
         auto* clearShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
         connect(clearShortcut, &QShortcut::activated, this,
@@ -209,14 +285,20 @@ namespace CalculatorUI
     {
         try
         {
-            const std::string input = expressionInput->text().toStdString();
+            const QString originalExpression = expressionInput->text();
+            const std::string input = originalExpression.toStdString();
             Calculator::Lexer lexer(input);
             const auto tokens = lexer.tokenize();
             Calculator::Parser parser(tokens);
             const auto expression = parser.parse();
-            Calculator::Evaluator evaluator(angleMode);
+            Calculator::Evaluator evaluator(Calculator::EvaluationContext{
+                angleMode,
+                lastAnswer
+            });
             const double result = evaluator.evaluate(expression);
 
+            lastAnswer = result;
+            addHistoryEntry(originalExpression, result, angleMode);
             setMessage("Result: " + QString::number(result, 'g', 15), "result");
         }
         catch (const Calculator::CalculatorError& error)
@@ -327,6 +409,73 @@ namespace CalculatorUI
         expressionInput->setFocus();
     }
 
+    void CalculatorWindow::toggleHistory(bool visible)
+    {
+        if (visible)
+        {
+            historyPanel->show();
+            resize(width() + historyPanelWidth, height());
+        }
+        else
+        {
+            historyPanel->hide();
+            resize(std::max(minimumWidth(), width() - historyPanelWidth), height());
+        }
+
+        expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::addHistoryEntry(const QString& expression,
+                                           double result,
+                                           Calculator::AngleMode mode)
+    {
+        const QString resultText = QString::number(result, 'g', 15);
+        const QString modeText = mode == Calculator::AngleMode::Radians ? "RAD" : "DEG";
+        auto* item = new QListWidgetItem(
+            expression + "\n= " + resultText + " · " + modeText
+        );
+        item->setData(expressionRole, expression);
+        item->setData(resultRole, result);
+        item->setData(angleModeRole, static_cast<int>(mode));
+        historyList->insertItem(0, item);
+
+        while (historyList->count() > historyEntryLimit)
+        {
+            delete historyList->takeItem(historyList->count() - 1);
+        }
+    }
+
+    void CalculatorWindow::recallHistoryEntry(QListWidgetItem* item)
+    {
+        if (!item)
+        {
+            return;
+        }
+
+        expressionInput->setText(item->data(expressionRole).toString());
+        const auto storedMode = static_cast<Calculator::AngleMode>(
+            item->data(angleModeRole).toInt()
+        );
+
+        if (storedMode == Calculator::AngleMode::Radians)
+        {
+            switchToRadians();
+        }
+        else
+        {
+            switchToDegrees();
+        }
+
+        expressionInput->setCursorPosition(expressionInput->text().size());
+        expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::clearHistory()
+    {
+        historyList->clear();
+        expressionInput->setFocus();
+    }
+
     void CalculatorWindow::showCalculationError(const Calculator::CalculatorError& error)
     {
         const QString input = expressionInput->text();
@@ -423,6 +572,7 @@ namespace CalculatorUI
         addInsertButton(".", ".", "basicDecimalButton", "digit", 3, 1);
         addInsertButton(QStringLiteral("xʸ"), "^", "basicPowerButton", "operator", 3, 2);
         addInsertButton("+", "+", "basicAddButton", "operator", 3, 3);
+        addInsertButton("Ans", "Ans", "basicAnsButton", "function", 3, 4);
 
         auto* clearButton = createKeyButton("Clear", "clearButton", "clear", keypad);
         connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
@@ -513,7 +663,8 @@ namespace CalculatorUI
 
         auto* clearButton = createKeyButton("Clear", "functionsClearButton", "clear", keypad);
         connect(clearButton, &QPushButton::clicked, this, [this]() { clearExpression(); });
-        grid->addWidget(clearButton, 3, 0, 1, 2);
+        grid->addWidget(clearButton, 3, 0);
+        addInsertButton("Ans", "Ans", "functionsAnsButton", "function", 3, 1);
         addInsertButton("0", "0", "functions0Button", "digit", 3, 2);
         addInsertButton(".", ".", "functionsDecimalButton", "digit", 3, 3);
         addInsertButton("1", "1", "functions1Button", "digit", 3, 4);
