@@ -196,11 +196,30 @@ namespace Calculator
             return result;
         }
 
-        if (tokens[current].type == TokenType::Function)
+        if (tokens[current].type == TokenType::Identifier)
         {
-            const Token& functionToken = tokens[current];
-            const std::size_t position = functionToken.position;
-            const Function function = parseFunction(functionToken);
+            const Token& identifierToken = tokens[current];
+            const std::size_t position = identifierToken.position;
+
+            if (identifierToken.value == "pi")
+            {
+                current++;
+
+                return {
+                    ExpressionType::Constant,
+                    0,
+                    Operator::Add,
+                    nullptr,
+                    nullptr,
+                    UnaryOperator::Negate,
+                    Function::SquareRoot,
+                    nullptr,
+                    position,
+                    Constant::Pi
+                };
+            }
+
+            const Function function = parseFunction(identifierToken);
             current++;
 
             if (current >= tokens.size() ||
@@ -276,10 +295,25 @@ namespace Calculator
             return Function::Tangent;
         }
 
+        if (token.value == "abs")
+        {
+            return Function::AbsoluteValue;
+        }
+
+        if (token.value == "ln")
+        {
+            return Function::NaturalLogarithm;
+        }
+
+        if (token.value == "log10")
+        {
+            return Function::Base10Logarithm;
+        }
+
         throw CalculatorError(
             ErrorCategory::Syntax,
             token.position,
-            "Unsupported function '" + token.value + "'"
+            "Unknown identifier '" + token.value + "'"
         );
     }
 

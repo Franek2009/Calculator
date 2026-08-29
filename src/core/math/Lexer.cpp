@@ -59,18 +59,18 @@ namespace Calculator
             if (std::isalpha(static_cast<unsigned char>(current)))
             {
                 const std::size_t position = i;
-                std::string function;
+                std::string identifier;
 
                 while (i < input.length() &&
-                       std::isalpha(static_cast<unsigned char>(input[i])))
+                       std::isalnum(static_cast<unsigned char>(input[i])))
                 {
-                    function += input[i];
+                    identifier += input[i];
                     ++i;
                 }
 
                 --i;
 
-                tokens.push_back({TokenType::Function, function, position});
+                tokens.push_back({TokenType::Identifier, identifier, position});
                 continue;
             }
             switch (current)

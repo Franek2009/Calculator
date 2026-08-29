@@ -59,4 +59,29 @@ namespace Calculator::BasicOperations
     {
         return std::tan(radians);
     }
+
+    double absoluteValue(double number)
+    {
+        return std::abs(number);
+    }
+
+    double naturalLogarithm(double number)
+    {
+        if (number <= 0)
+        {
+            throw std::invalid_argument("Natural logarithm of a non-positive number");
+        }
+
+        return std::log(number);
+    }
+
+    double base10Logarithm(double number)
+    {
+        if (number <= 0)
+        {
+            throw std::invalid_argument("Base-10 logarithm of a non-positive number");
+        }
+
+        return std::log10(number);
+    }
 }

@@ -9,6 +9,7 @@ namespace Calculator
     enum class ExpressionType
     {
         Number,
+        Constant,
         BinaryOperation,
         UnaryOperation,
         FunctionCall
@@ -33,7 +34,15 @@ namespace Calculator
         SquareRoot,
         Sine,
         Cosine,
-        Tangent
+        Tangent,
+        AbsoluteValue,
+        NaturalLogarithm,
+        Base10Logarithm
+    };
+
+    enum class Constant
+    {
+        Pi
     };
 
     struct Expression
@@ -51,6 +60,7 @@ namespace Calculator
         std::unique_ptr<Expression> operand;
 
         std::size_t position;
+        Constant constant;
     };
 }
 

@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 #include "../src/core/math/BasicOperations.h"
 
@@ -55,4 +56,45 @@ TEST_CASE("Trigonometric operations work with radians")
     REQUIRE(Calculator::BasicOperations::sine(0.5) == Catch::Approx(std::sin(0.5)));
     REQUIRE(Calculator::BasicOperations::cosine(0.5) == Catch::Approx(std::cos(0.5)));
     REQUIRE(Calculator::BasicOperations::tangent(0.5) == Catch::Approx(std::tan(0.5)));
+}
+
+TEST_CASE("Absolute value and logarithms work correctly")
+{
+    REQUIRE(Calculator::BasicOperations::absoluteValue(-5) == 5);
+    REQUIRE(Calculator::BasicOperations::naturalLogarithm(1) == 0);
+    REQUIRE(Calculator::BasicOperations::base10Logarithm(100) == 2);
+}
+
+TEST_CASE("Logarithms reject non-positive arguments")
+{
+    const auto requireDomainError = [](const auto& operation,
+                                       const std::string& description)
+    {
+        try
+        {
+            operation();
+            FAIL("Expected a domain error");
+        }
+        catch (const std::invalid_argument& error)
+        {
+            REQUIRE(std::string(error.what()) == description);
+        }
+    };
+
+    requireDomainError(
+        []() { Calculator::BasicOperations::naturalLogarithm(0); },
+        "Natural logarithm of a non-positive number"
+    );
+    requireDomainError(
+        []() { Calculator::BasicOperations::naturalLogarithm(-1); },
+        "Natural logarithm of a non-positive number"
+    );
+    requireDomainError(
+        []() { Calculator::BasicOperations::base10Logarithm(0); },
+        "Base-10 logarithm of a non-positive number"
+    );
+    requireDomainError(
+        []() { Calculator::BasicOperations::base10Logarithm(-1); },
+        "Base-10 logarithm of a non-positive number"
+    );
 }

@@ -3,6 +3,7 @@
 #include "BasicOperations.h"
 #include "CalculatorError.h"
 
+#include <numbers>
 #include <stdexcept>
 
 namespace Calculator
@@ -15,6 +16,19 @@ namespace Calculator
             {
                 case ExpressionType::Number:
                     return expression.value;
+
+                case ExpressionType::Constant:
+                    switch (expression.constant)
+                    {
+                        case Constant::Pi:
+                            return std::numbers::pi;
+                    }
+
+                    throw CalculatorError(
+                        ErrorCategory::Evaluation,
+                        expression.position,
+                        "Unsupported constant"
+                    );
 
                 case ExpressionType::BinaryOperation:
                 {
@@ -103,6 +117,15 @@ namespace Calculator
 
                         case Function::Tangent:
                             return BasicOperations::tangent(evaluate(*expression.operand));
+
+                        case Function::AbsoluteValue:
+                            return BasicOperations::absoluteValue(evaluate(*expression.operand));
+
+                        case Function::NaturalLogarithm:
+                            return BasicOperations::naturalLogarithm(evaluate(*expression.operand));
+
+                        case Function::Base10Logarithm:
+                            return BasicOperations::base10Logarithm(evaluate(*expression.operand));
                     }
 
                     throw CalculatorError(

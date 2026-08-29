@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <numbers>
 #include <stdexcept>
 #include <string>
 
@@ -88,6 +89,44 @@ TEST_CASE("Calculation pipeline evaluates trigonometric functions in radians")
     REQUIRE(identity == Catch::Approx(1.0));
 }
 
+TEST_CASE("Calculation pipeline evaluates pi, absolute value, and logarithms")
+{
+    REQUIRE(calculate("pi") == Catch::Approx(std::numbers::pi));
+    REQUIRE(calculate("2*pi") == Catch::Approx(2 * std::numbers::pi));
+    REQUIRE(calculate("-pi^2") == Catch::Approx(-std::numbers::pi * std::numbers::pi));
+    REQUIRE(calculate("sin(pi/2)") == Catch::Approx(1.0));
+    REQUIRE(calculate("cos(pi)") == Catch::Approx(-1.0));
+    REQUIRE(calculate("abs(-5)") == 5);
+    REQUIRE(calculate("ln(1)") == 0);
+    REQUIRE(calculate("log10(1000)") == 3);
+    REQUIRE(calculate("ln(abs(-2))") == Catch::Approx(std::log(2.0)));
+}
+
+TEST_CASE("Calculation pipeline reports logarithm domain errors")
+{
+    const auto requireEvaluationError = [](const std::string& input,
+                                           const std::string& description)
+    {
+        try
+        {
+            calculate(input);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(error.position() == 0);
+            REQUIRE(std::string(error.what()) ==
+                    "Evaluation error at position 1: " + description);
+        }
+    };
+
+    requireEvaluationError("ln(0)", "Natural logarithm of a non-positive number");
+    requireEvaluationError("ln(-1)", "Natural logarithm of a non-positive number");
+    requireEvaluationError("log10(0)", "Base-10 logarithm of a non-positive number");
+    requireEvaluationError("log10(-1)", "Base-10 logarithm of a non-positive number");
+}
+
 TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negation")
 {
     REQUIRE(calculate("--2") == 2);
@@ -100,7 +139,7 @@ TEST_CASE("Calculation pipeline gives exponentiation precedence over unary negat
 TEST_CASE("Calculation pipeline reports function errors")
 {
     REQUIRE_THROWS_AS(calculate("sqrt(-1)"), std::invalid_argument);
-    REQUIRE_THROWS_AS(calculate("log(1)"), std::invalid_argument);
+    REQUIRE_THROWS_AS(calculate("unknown(1)"), std::invalid_argument);
     REQUIRE_THROWS_AS(calculate("sqrt(9"), std::invalid_argument);
 
     try

@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <memory>
+#include <numbers>
 #include <stdexcept>
 #include <utility>
 
@@ -62,6 +63,23 @@ namespace
             Calculator::UnaryOperator::Negate,
             function,
             std::make_unique<Calculator::Expression>(std::move(operand))
+        };
+    }
+
+    Calculator::Expression constant(Calculator::Constant constant,
+                                    std::size_t position = 0)
+    {
+        return {
+            Calculator::ExpressionType::Constant,
+            0,
+            Calculator::Operator::Add,
+            nullptr,
+            nullptr,
+            Calculator::UnaryOperator::Negate,
+            Calculator::Function::SquareRoot,
+            nullptr,
+            position,
+            constant
         };
     }
 }
@@ -164,6 +182,50 @@ TEST_CASE("Evaluator evaluates trigonometric functions in radians")
             Catch::Approx(std::cos(0.5)));
     REQUIRE(evaluator.evaluate(function(Calculator::Function::Tangent, number(0.5))) ==
             Catch::Approx(std::tan(0.5)));
+}
+
+TEST_CASE("Evaluator evaluates constants, absolute value, and logarithms")
+{
+    Calculator::Evaluator evaluator;
+
+    REQUIRE(evaluator.evaluate(constant(Calculator::Constant::Pi)) ==
+            Catch::Approx(std::numbers::pi));
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::AbsoluteValue, number(-5))) == 5);
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::NaturalLogarithm, number(1))) == 0);
+    REQUIRE(evaluator.evaluate(function(Calculator::Function::Base10Logarithm, number(100))) == 2);
+}
+
+TEST_CASE("Evaluator reports logarithm domain errors")
+{
+    Calculator::Evaluator evaluator;
+    const auto requireDomainError = [&evaluator](Calculator::Function logarithm,
+                                                  double argument,
+                                                  const std::string& description)
+    {
+        const auto expression = function(logarithm, number(argument));
+
+        try
+        {
+            evaluator.evaluate(expression);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(error.position() == 0);
+            REQUIRE(std::string(error.what()) ==
+                    "Evaluation error at position 1: " + description);
+        }
+    };
+
+    requireDomainError(Calculator::Function::NaturalLogarithm, 0,
+                       "Natural logarithm of a non-positive number");
+    requireDomainError(Calculator::Function::NaturalLogarithm, -1,
+                       "Natural logarithm of a non-positive number");
+    requireDomainError(Calculator::Function::Base10Logarithm, 0,
+                       "Base-10 logarithm of a non-positive number");
+    requireDomainError(Calculator::Function::Base10Logarithm, -1,
+                       "Base-10 logarithm of a non-positive number");
 }
 
 TEST_CASE("Evaluator propagates square root domain errors")

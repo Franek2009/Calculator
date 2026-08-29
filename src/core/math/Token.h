@@ -19,7 +19,7 @@ namespace Calculator
         LeftParenthesis,
         RightParenthesis,
 
-        Function
+        Identifier
     };
 
     struct Token

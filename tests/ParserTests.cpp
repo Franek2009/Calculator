@@ -258,6 +258,9 @@ TEST_CASE("Parser recognizes trigonometric function calls")
     requireFunction("sin(0)", Calculator::Function::Sine);
     requireFunction("cos(0)", Calculator::Function::Cosine);
     requireFunction("tan(0)", Calculator::Function::Tangent);
+    requireFunction("abs(0)", Calculator::Function::AbsoluteValue);
+    requireFunction("ln(1)", Calculator::Function::NaturalLogarithm);
+    requireFunction("log10(1)", Calculator::Function::Base10Logarithm);
 }
 
 TEST_CASE("Parser nests trigonometric function calls")
@@ -270,6 +273,31 @@ TEST_CASE("Parser nests trigonometric function calls")
     REQUIRE(result.function == Calculator::Function::Sine);
     REQUIRE(result.operand->type == Calculator::ExpressionType::FunctionCall);
     REQUIRE(result.operand->function == Calculator::Function::Cosine);
+}
+
+TEST_CASE("Parser recognizes pi as a symbolic constant")
+{
+    Calculator::Lexer lexer("pi");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+    const auto result = parser.parse();
+
+    REQUIRE(result.type == Calculator::ExpressionType::Constant);
+    REQUIRE(result.constant == Calculator::Constant::Pi);
+    REQUIRE(result.position == 0);
+}
+
+TEST_CASE("Parser nests logarithm and absolute value calls")
+{
+    Calculator::Lexer lexer("ln(abs(-2))");
+    const auto tokens = lexer.tokenize();
+    Calculator::Parser parser(tokens);
+    const auto result = parser.parse();
+
+    REQUIRE(result.function == Calculator::Function::NaturalLogarithm);
+    REQUIRE(result.operand->type == Calculator::ExpressionType::FunctionCall);
+    REQUIRE(result.operand->function == Calculator::Function::AbsoluteValue);
+    REQUIRE(result.operand->operand->type == Calculator::ExpressionType::UnaryOperation);
 }
 
 TEST_CASE("Parser recognizes unary negation with exponentiation precedence")
@@ -301,7 +329,7 @@ TEST_CASE("Parser accepts unary negation as an exponent")
 
 TEST_CASE("Parser rejects unsupported and malformed function calls")
 {
-    requireSyntaxError("log(1)", 0, "Unsupported function 'log'");
+    requireSyntaxError("unknown(1)", 0, "Unknown identifier 'unknown'");
     requireSyntaxError("sqrt", 4, "Expected '(' after function name");
     requireSyntaxError("sqrt()", 5, "Expected expression");
     requireSyntaxError("sqrt(9", 6, "Expected ')'");
@@ -319,4 +347,11 @@ TEST_CASE("Parser reports positions for invalid operator and parenthesis usage")
     requireSyntaxError("2 3", 2, "Unexpected token '3' after expression");
     requireSyntaxError("+2", 0, "Expected expression");
     requireSyntaxError("++2", 0, "Expected expression");
+}
+
+TEST_CASE("Parser rejects constants without explicit operators")
+{
+    requireSyntaxError("pi()", 2, "Unexpected token '(' after expression");
+    requireSyntaxError("pi2", 0, "Unknown identifier 'pi2'");
+    requireSyntaxError("2pi", 1, "Unexpected token 'pi' after expression");
 }

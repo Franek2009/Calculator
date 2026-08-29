@@ -67,7 +67,7 @@ TEST_CASE("Lexer recognizes a function")
 
     REQUIRE(tokens.size() == 4);
 
-    REQUIRE(tokens[0].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
     REQUIRE(tokens[0].value == "sqrt");
     REQUIRE(tokens[0].position == 0);
 
@@ -109,15 +109,43 @@ TEST_CASE("Lexer recognizes trigonometric function names and positions")
 
     REQUIRE(tokens.size() == 14);
 
-    REQUIRE(tokens[0].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
     REQUIRE(tokens[0].value == "sin");
     REQUIRE(tokens[0].position == 0);
 
-    REQUIRE(tokens[5].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[5].type == Calculator::TokenType::Identifier);
     REQUIRE(tokens[5].value == "cos");
     REQUIRE(tokens[5].position == 7);
 
-    REQUIRE(tokens[10].type == Calculator::TokenType::Function);
+    REQUIRE(tokens[10].type == Calculator::TokenType::Identifier);
     REQUIRE(tokens[10].value == "tan");
     REQUIRE(tokens[10].position == 14);
+}
+
+TEST_CASE("Lexer recognizes constants and alphanumeric identifiers")
+{
+    Calculator::Lexer lexer("pi log10 pi2 2pi");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens.size() == 5);
+
+    REQUIRE(tokens[0].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[0].value == "pi");
+    REQUIRE(tokens[0].position == 0);
+
+    REQUIRE(tokens[1].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[1].value == "log10");
+    REQUIRE(tokens[1].position == 3);
+
+    REQUIRE(tokens[2].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[2].value == "pi2");
+    REQUIRE(tokens[2].position == 9);
+
+    REQUIRE(tokens[3].type == Calculator::TokenType::Number);
+    REQUIRE(tokens[3].value == "2");
+    REQUIRE(tokens[3].position == 13);
+
+    REQUIRE(tokens[4].type == Calculator::TokenType::Identifier);
+    REQUIRE(tokens[4].value == "pi");
+    REQUIRE(tokens[4].position == 14);
 }
