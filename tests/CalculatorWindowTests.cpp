@@ -21,6 +21,8 @@ private slots:
     void inverseTrigButtonsInsertParserSyntax();
     void inverseTrigCalculatesWithAngleModesAndAns();
     void inverseTrigErrorsAndHistoryPreserveDiagnosticsAndMode();
+    void utilityButtonsInsertExpectedSyntax();
+    void postfixOperatorsCalculateReportErrorsAndUseHistory();
     void powerAndSquareButtonsUseExistingGrammar();
     void insertsPiAtTheCursor();
     void insertsEAndGeneralLogarithmSyntax();
@@ -321,6 +323,104 @@ void CalculatorWindowTests::inverseTrigErrorsAndHistoryPreserveDiagnosticsAndMod
     QVERIFY(degreesButton->isChecked());
     QVERIFY(!radiansButton->isChecked());
     QVERIFY(message->text().isEmpty());
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::utilityButtonsInsertExpectedSyntax()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* functionsMode = window.findChild<QPushButton*>("functionsModeButton");
+    auto* factorialButton = window.findChild<QPushButton*>("factorialButton");
+    auto* percentageButton = window.findChild<QPushButton*>("percentageButton");
+    auto* reciprocalButton = window.findChild<QPushButton*>("reciprocalButton");
+    auto* cubeButton = window.findChild<QPushButton*>("cubeButton");
+    auto* squareButton = window.findChild<QPushButton*>("squareButton");
+
+    QVERIFY(input);
+    QVERIFY(functionsMode);
+    QVERIFY(factorialButton);
+    QVERIFY(percentageButton);
+    QVERIFY(reciprocalButton);
+    QVERIFY(cubeButton);
+    QVERIFY(squareButton);
+    QTest::mouseClick(functionsMode, Qt::LeftButton);
+
+    input->setText("5");
+    input->setCursorPosition(1);
+    QTest::mouseClick(factorialButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "5!");
+
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(percentageButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "(2+3)%");
+
+    input->clear();
+    QTest::mouseClick(reciprocalButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "1/()");
+    QCOMPARE(input->cursorPosition(), 3);
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(reciprocalButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "1/(2+3)");
+    QCOMPARE(input->cursorPosition(), 7);
+
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(cubeButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "(2+3)^3");
+    input->setText("2+3");
+    input->selectAll();
+    QTest::mouseClick(squareButton, Qt::LeftButton);
+    QCOMPARE(input->text(), "(2+3)^2");
+    QVERIFY(input->hasFocus());
+}
+
+void CalculatorWindowTests::postfixOperatorsCalculateReportErrorsAndUseHistory()
+{
+    CalculatorUI::CalculatorWindow window;
+    showWindow(window);
+    auto* input = window.findChild<QLineEdit*>("expressionInput");
+    auto* message = window.findChild<QLabel*>("messageLabel");
+    auto* history = window.findChild<QListWidget*>("historyList");
+
+    QVERIFY(input);
+    QVERIFY(message);
+    QVERIFY(history);
+
+    QTest::keyClicks(input, "5!");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 120");
+    QCOMPARE(history->count(), 1);
+
+    input->setText("Ans%");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(), "Result: 1.2");
+    QCOMPARE(history->count(), 2);
+    QVERIFY(history->item(0)->text().startsWith("Ans%\n= 1.2"));
+
+    input->setText("2.5!");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(),
+             "Evaluation error at position 4: Factorial is only defined for non-negative integers");
+    QCOMPARE(input->selectionStart(), 3);
+    QCOMPARE(input->selectedText(), "!");
+    QCOMPARE(history->count(), 2);
+
+    input->setText("5!!");
+    QTest::keyClick(input, Qt::Key_Return);
+    QCOMPARE(message->text(),
+             "Syntax error at position 3: Double factorial is not supported");
+    QCOMPARE(input->selectionStart(), 2);
+    QCOMPARE(input->selectedText(), "!");
+    QCOMPARE(history->count(), 2);
+
+    input->setText("1/(Ans)");
+    QTest::keyClick(input, Qt::Key_Return);
+    QVERIFY(message->text().startsWith("Result: "));
+    QCOMPARE(history->count(), 3);
     QVERIFY(input->hasFocus());
 }
 

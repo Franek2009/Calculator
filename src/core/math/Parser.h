@@ -25,6 +25,7 @@ namespace Calculator
         Expression parseTerm();
         Expression parseUnary();
         Expression parsePower();
+        Expression parsePostfix();
         Expression parsePrimary();
         std::vector<Expression> parseArgumentList();
         Function parseFunction(const Token& token) const;

@@ -103,6 +103,25 @@ namespace
             constant
         };
     }
+
+    Calculator::Expression postfix(Calculator::PostfixOperator operation,
+                                    Calculator::Expression operand,
+                                    std::size_t position = 0)
+    {
+        Calculator::Expression result{
+            Calculator::ExpressionType::PostfixOperation,
+            0,
+            Calculator::Operator::Add,
+            nullptr,
+            nullptr,
+            Calculator::UnaryOperator::Negate,
+            Calculator::Function::SquareRoot,
+            std::make_unique<Calculator::Expression>(std::move(operand)),
+            position
+        };
+        result.postfixOperation = operation;
+        return result;
+    }
 }
 
 TEST_CASE("Evaluator returns the value of a number expression")
@@ -191,6 +210,33 @@ TEST_CASE("Evaluator evaluates unary negation and square root")
 
     REQUIRE(evaluator.evaluate(unary(Calculator::UnaryOperator::Negate, number(3))) == -3);
     REQUIRE(evaluator.evaluate(function(Calculator::Function::SquareRoot, number(9))) == 3);
+}
+
+TEST_CASE("Evaluator evaluates postfix operations")
+{
+    Calculator::Evaluator evaluator;
+    REQUIRE(evaluator.evaluate(postfix(Calculator::PostfixOperator::Factorial, number(5))) ==
+            120);
+    REQUIRE(evaluator.evaluate(postfix(Calculator::PostfixOperator::Percentage, number(50))) ==
+            0.5);
+}
+
+TEST_CASE("Evaluator reports postfix errors at the operator position")
+{
+    Calculator::Evaluator evaluator;
+    try
+    {
+        evaluator.evaluate(postfix(Calculator::PostfixOperator::Factorial, number(2.5), 4));
+        FAIL("Expected an evaluation error");
+    }
+    catch (const Calculator::CalculatorError& error)
+    {
+        REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+        REQUIRE(error.position() == 4);
+        REQUIRE(std::string(error.what()) ==
+                "Evaluation error at position 5: "
+                "Factorial is only defined for non-negative integers");
+    }
 }
 
 TEST_CASE("Evaluator evaluates trigonometric functions in radians")

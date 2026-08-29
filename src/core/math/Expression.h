@@ -13,6 +13,7 @@ namespace Calculator
         Constant,
         BinaryOperation,
         UnaryOperation,
+        PostfixOperation,
         FunctionCall
     };
 
@@ -28,6 +29,12 @@ namespace Calculator
     enum class UnaryOperator
     {
         Negate
+    };
+
+    enum class PostfixOperator
+    {
+        Factorial,
+        Percentage
     };
 
     enum class Function
@@ -70,6 +77,7 @@ namespace Calculator
         Constant constant;
 
         std::vector<Expression> arguments;
+        PostfixOperator postfixOperation;
     };
 }
 

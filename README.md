@@ -6,6 +6,7 @@ A compact desktop scientific calculator built with C++20 and Qt 6. It combines a
 
 - Basic arithmetic: addition, subtraction, multiplication, and division
 - Exponentiation, parentheses, and unary negation
+- Postfix factorial (`!`) and mathematical percentage (`x% = x / 100`)
 - Scientific functions: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `abs`, `ln`, and `log10`
 - Arbitrary-base logarithms with `log(base, value)`
 - Radian and degree modes for trigonometric functions, including inverse-trigonometric results
@@ -86,6 +87,7 @@ Standard text-editing shortcuts supported by `QLineEdit` continue to work in the
 - `Ans` and calculation history exist only for the current application session.
 - Function and constant names are case-sensitive; the previous result is spelled `Ans`.
 - User-defined variables and assignments are not supported.
+- Percentage is context-free: `200+10%` evaluates to `200.1`, not `220`.
 
 ## License
 

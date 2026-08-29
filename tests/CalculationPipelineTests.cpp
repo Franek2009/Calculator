@@ -196,6 +196,122 @@ TEST_CASE("Calculation pipeline evaluates inverse trigonometry with Ans")
             }) == Catch::Approx(90.0).epsilon(1e-12));
 }
 
+TEST_CASE("Calculation pipeline evaluates factorial and percentage postfix operators")
+{
+    REQUIRE(calculate("0!") == 1);
+    REQUIRE(calculate("1!") == 1);
+    REQUIRE(calculate("5!") == 120);
+    REQUIRE(calculate("10!") == 3628800);
+    REQUIRE(calculate("(2+3)!") == 120);
+    REQUIRE(calculate("50%") == 0.5);
+    REQUIRE(calculate("12.5%") == 0.125);
+    REQUIRE(calculate("200*10%") == 20);
+    REQUIRE(calculate("200+10%") == 200.1);
+}
+
+TEST_CASE("Calculation pipeline respects postfix precedence and repetition")
+{
+    REQUIRE(calculate("5!^2") == 14400);
+    REQUIRE(calculate("2^3!") == 64);
+    REQUIRE(calculate("-3!") == -6);
+    REQUIRE(calculate("50%^2") == 0.25);
+    REQUIRE(calculate("50%%") == 0.005);
+    REQUIRE(calculate("5!%") == 1.2);
+    REQUIRE_THROWS_AS(calculate("50%!"), Calculator::CalculatorError);
+}
+
+TEST_CASE("Calculation pipeline rejects reserved double-factorial syntax")
+{
+    const auto requireDoubleFactorialError = [](const std::string& input,
+                                                 std::size_t position)
+    {
+        try
+        {
+            calculate(input);
+            FAIL("Expected a syntax error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Syntax);
+            REQUIRE(error.position() == position);
+            REQUIRE(std::string(error.what()) ==
+                    "Syntax error at position " + std::to_string(position + 1) +
+                    ": Double factorial is not supported");
+        }
+    };
+
+    requireDoubleFactorialError("5!!", 2);
+    requireDoubleFactorialError("3!!!", 2);
+    requireDoubleFactorialError("5!!!%", 2);
+}
+
+TEST_CASE("Calculation pipeline permits mixed postfix syntax before domain evaluation")
+{
+    const auto requireEvaluationError = [](const std::string& input)
+    {
+        try
+        {
+            calculate(input);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(std::string(error.what()).find(
+                        "Factorial is only defined for non-negative integers"
+                    ) != std::string::npos);
+        }
+    };
+
+    requireEvaluationError("5%!");
+    requireEvaluationError("5%!%");
+    requireEvaluationError("5!%!");
+    requireEvaluationError("50%%!");
+}
+
+TEST_CASE("Calculation pipeline reports factorial failures at the postfix operator")
+{
+    const auto requireError = [](const std::string& input,
+                                 std::size_t position,
+                                 const std::string& description)
+    {
+        try
+        {
+            calculate(input);
+            FAIL("Expected an evaluation error");
+        }
+        catch (const Calculator::CalculatorError& error)
+        {
+            REQUIRE(error.category() == Calculator::ErrorCategory::Evaluation);
+            REQUIRE(error.position() == position);
+            REQUIRE(std::string(error.what()) ==
+                    "Evaluation error at position " + std::to_string(position + 1) +
+                    ": " + description);
+        }
+    };
+
+    requireError("2.5!", 3, "Factorial is only defined for non-negative integers");
+    requireError("(-1)!", 4, "Factorial is only defined for non-negative integers");
+    requireError("171!", 3, "Factorial result is too large");
+}
+
+TEST_CASE("Calculation pipeline combines postfix operators with Ans")
+{
+    REQUIRE(calculate("Ans!", Calculator::EvaluationContext{
+                Calculator::AngleMode::Radians, 5.0
+            }) == 120);
+    REQUIRE(calculate("Ans%", Calculator::EvaluationContext{
+                Calculator::AngleMode::Radians, 50.0
+            }) == 0.5);
+}
+
+TEST_CASE("Postfix operators preserve power and unary-negation regression behavior")
+{
+    REQUIRE(calculate("-2^2") == -4);
+    REQUIRE(calculate("2^-2") == 0.25);
+    REQUIRE(calculate("2^-2^2") == 0.0625);
+}
+
 TEST_CASE("Calculation pipeline evaluates expressions with Ans")
 {
     const Calculator::EvaluationContext context{

@@ -15,6 +15,8 @@ namespace Calculator::BasicOperations
     double arcSine(double value);
     double arcCosine(double value);
     double arcTangent(double value);
+    double factorial(double value);
+    double percentage(double value);
     double absoluteValue(double number);
     double naturalLogarithm(double number);
     double base10Logarithm(double number);

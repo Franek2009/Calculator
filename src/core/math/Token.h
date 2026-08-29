@@ -15,6 +15,8 @@ namespace Calculator
         Multiply,
         Divide,
         Power,
+        Factorial,
+        Percentage,
 
         LeftParenthesis,
         RightParenthesis,

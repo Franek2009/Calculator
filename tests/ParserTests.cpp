@@ -292,6 +292,56 @@ TEST_CASE("Parser validates inverse trigonometric syntax")
     requireSyntaxError("acos(1", 6, "Expected ')'");
 }
 
+TEST_CASE("Parser builds postfix expressions with operator positions")
+{
+    const auto parse = [](const std::string& input)
+    {
+        Calculator::Lexer lexer(input);
+        Calculator::Parser parser(lexer.tokenize());
+        return parser.parse();
+    };
+
+    const auto factorial = parse("5!");
+    REQUIRE(factorial.type == Calculator::ExpressionType::PostfixOperation);
+    REQUIRE(factorial.postfixOperation == Calculator::PostfixOperator::Factorial);
+    REQUIRE(factorial.position == 1);
+    REQUIRE(factorial.operand->value == 5);
+
+    const auto repeated = parse("50%!");
+    REQUIRE(repeated.postfixOperation == Calculator::PostfixOperator::Factorial);
+    REQUIRE(repeated.position == 3);
+    REQUIRE(repeated.operand->postfixOperation == Calculator::PostfixOperator::Percentage);
+    REQUIRE(repeated.operand->position == 2);
+}
+
+TEST_CASE("Parser reserves consecutive factorial operators")
+{
+    requireSyntaxError("5!!", 2, "Double factorial is not supported");
+    requireSyntaxError("3!!!", 2, "Double factorial is not supported");
+    requireSyntaxError("5!!!%", 2, "Double factorial is not supported");
+}
+
+TEST_CASE("Parser gives postfix operators precedence over power and unary negation")
+{
+    Calculator::Lexer lexer("-3!+5!^2+2^3!+50%^2");
+    Calculator::Parser parser(lexer.tokenize());
+    REQUIRE_NOTHROW(parser.parse());
+
+    Calculator::Lexer groupedLexer("(-3)!");
+    Calculator::Parser groupedParser(groupedLexer.tokenize());
+    const auto grouped = groupedParser.parse();
+    REQUIRE(grouped.type == Calculator::ExpressionType::PostfixOperation);
+    REQUIRE(grouped.operand->type == Calculator::ExpressionType::UnaryOperation);
+}
+
+TEST_CASE("Parser rejects malformed postfix syntax")
+{
+    requireSyntaxError("!5", 0, "Expected expression");
+    requireSyntaxError("%5", 0, "Expected expression");
+    requireSyntaxError("5!2", 2, "Unexpected token '2' after expression");
+    requireSyntaxError("5!^", 3, "Expected expression");
+}
+
 TEST_CASE("Parser nests trigonometric function calls")
 {
     Calculator::Lexer lexer("sin(cos(0))");

@@ -143,7 +143,7 @@ namespace Calculator
 
     Expression Parser::parsePower()
     {
-        Expression left = parsePrimary();
+        Expression left = parsePostfix();
 
         if (current < tokens.size() &&
             tokens[current].type == TokenType::Power)
@@ -167,6 +167,49 @@ namespace Calculator
         }
 
         return left;
+    }
+
+    Expression Parser::parsePostfix()
+    {
+        Expression result = parsePrimary();
+        bool previousWasFactorial = false;
+
+        while (current < tokens.size() &&
+               (tokens[current].type == TokenType::Factorial ||
+                tokens[current].type == TokenType::Percentage))
+        {
+            const Token& token = tokens[current];
+            const bool isFactorial = token.type == TokenType::Factorial;
+
+            if (isFactorial && previousWasFactorial)
+            {
+                throw CalculatorError(
+                    ErrorCategory::Syntax,
+                    token.position,
+                    "Double factorial is not supported"
+                );
+            }
+
+            current++;
+            Expression postfix{
+                ExpressionType::PostfixOperation,
+                0,
+                Operator::Add,
+                nullptr,
+                nullptr,
+                UnaryOperator::Negate,
+                Function::SquareRoot,
+                std::make_unique<Expression>(std::move(result)),
+                token.position
+            };
+            postfix.postfixOperation = isFactorial
+                ? PostfixOperator::Factorial
+                : PostfixOperator::Percentage;
+            result = std::move(postfix);
+            previousWasFactorial = isFactorial;
+        }
+
+        return result;
     }
 
     Expression Parser::parsePrimary()

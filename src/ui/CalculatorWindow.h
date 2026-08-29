@@ -36,7 +36,9 @@ namespace CalculatorUI
         void insertText(const QString& text);
         void insertFunction(const QString& functionName);
         void insertLogarithm();
-        void insertSquare();
+        void insertPowerShortcut(int exponent);
+        void insertPostfixOperator(const QString& text);
+        void insertReciprocal();
         void backspace();
         void switchToBasicMode();
         void switchToFunctionsMode();

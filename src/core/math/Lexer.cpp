@@ -95,6 +95,14 @@ namespace Calculator
                     tokens.push_back({TokenType::Power, "^", i});
                     break;
 
+                case '!':
+                    tokens.push_back({TokenType::Factorial, "!", i});
+                    break;
+
+                case '%':
+                    tokens.push_back({TokenType::Percentage, "%", i});
+                    break;
+
                 case '(':
                     tokens.push_back({TokenType::LeftParenthesis, "(", i});
                     break;

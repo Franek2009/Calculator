@@ -151,6 +151,31 @@ namespace Calculator
                     );
                 }
 
+                case ExpressionType::PostfixOperation:
+                {
+                    if (!expression.operand)
+                    {
+                        throw CalculatorError(
+                            ErrorCategory::Evaluation,
+                            expression.position,
+                            "Postfix operation requires an operand"
+                        );
+                    }
+
+                    const double value = evaluate(*expression.operand);
+                    switch (expression.postfixOperation)
+                    {
+                        case PostfixOperator::Factorial:
+                            return BasicOperations::factorial(value);
+                        case PostfixOperator::Percentage:
+                            return BasicOperations::percentage(value);
+                    }
+
+                    throw CalculatorError(ErrorCategory::Evaluation,
+                                          expression.position,
+                                          "Unsupported postfix operator");
+                }
+
                 case ExpressionType::FunctionCall:
                 {
                     const std::size_t expectedCount = expectedArgumentCount(expression.function);

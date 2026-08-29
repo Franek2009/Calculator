@@ -107,6 +107,54 @@ TEST_CASE("Inverse trigonometric operations validate their domains")
                        "Arc tangent argument must be finite");
 }
 
+TEST_CASE("Factorial calculates non-negative integers and detects overflow")
+{
+    using Calculator::BasicOperations::factorial;
+    REQUIRE(factorial(0) == 1);
+    REQUIRE(factorial(1) == 1);
+    REQUIRE(factorial(5) == 120);
+    REQUIRE(factorial(10) == 3628800);
+    REQUIRE(std::isfinite(factorial(170)));
+    try
+    {
+        factorial(171);
+        FAIL("Expected factorial overflow");
+    }
+    catch (const std::invalid_argument& error)
+    {
+        REQUIRE(std::string(error.what()) == "Factorial result is too large");
+    }
+}
+
+TEST_CASE("Factorial validates its domain")
+{
+    using Calculator::BasicOperations::factorial;
+    const auto requireDomainError = [](double value)
+    {
+        try
+        {
+            Calculator::BasicOperations::factorial(value);
+            FAIL("Expected a factorial domain error");
+        }
+        catch (const std::invalid_argument& error)
+        {
+            REQUIRE(std::string(error.what()) ==
+                    "Factorial is only defined for non-negative integers");
+        }
+    };
+    requireDomainError(-1);
+    requireDomainError(2.5);
+    requireDomainError(std::numeric_limits<double>::infinity());
+    requireDomainError(std::numeric_limits<double>::quiet_NaN());
+}
+
+TEST_CASE("Percentage divides values by one hundred")
+{
+    REQUIRE(Calculator::BasicOperations::percentage(50) == 0.5);
+    REQUIRE(Calculator::BasicOperations::percentage(100) == 1);
+    REQUIRE(Calculator::BasicOperations::percentage(12.5) == 0.125);
+}
+
 TEST_CASE("Absolute value and logarithms work correctly")
 {
     REQUIRE(Calculator::BasicOperations::absoluteValue(-5) == 5);

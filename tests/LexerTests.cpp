@@ -193,3 +193,20 @@ TEST_CASE("Lexer recognizes inverse trigonometric names as identifiers")
     REQUIRE(tokens[10].value == "atan");
     REQUIRE(tokens[10].position == 16);
 }
+
+TEST_CASE("Lexer recognizes postfix operator sequences and positions")
+{
+    Calculator::Lexer lexer("5!!+50%%+5!%+50%!");
+    const auto tokens = lexer.tokenize();
+
+    REQUIRE(tokens[1].type == Calculator::TokenType::Factorial);
+    REQUIRE(tokens[1].position == 1);
+    REQUIRE(tokens[2].type == Calculator::TokenType::Factorial);
+    REQUIRE(tokens[2].position == 2);
+    REQUIRE(tokens[5].type == Calculator::TokenType::Percentage);
+    REQUIRE(tokens[6].type == Calculator::TokenType::Percentage);
+    REQUIRE(tokens[9].type == Calculator::TokenType::Factorial);
+    REQUIRE(tokens[10].type == Calculator::TokenType::Percentage);
+    REQUIRE(tokens[13].type == Calculator::TokenType::Percentage);
+    REQUIRE(tokens[14].type == Calculator::TokenType::Factorial);
+}

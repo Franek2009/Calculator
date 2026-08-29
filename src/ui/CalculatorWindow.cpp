@@ -513,17 +513,45 @@ namespace CalculatorUI
         expressionInput->setFocus();
     }
 
-    void CalculatorWindow::insertSquare()
+    void CalculatorWindow::insertPowerShortcut(int exponent)
     {
+        const QString suffix = "^" + QString::number(exponent);
         if (expressionInput->hasSelectedText())
         {
-            expressionInput->insert("(" + expressionInput->selectedText() + ")^2");
+            expressionInput->insert("(" + expressionInput->selectedText() + ")" + suffix);
         }
         else
         {
-            expressionInput->insert("^2");
+            expressionInput->insert(suffix);
         }
 
+        expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::insertPostfixOperator(const QString& text)
+    {
+        if (expressionInput->hasSelectedText())
+        {
+            expressionInput->insert("(" + expressionInput->selectedText() + ")" + text);
+        }
+        else
+        {
+            expressionInput->insert(text);
+        }
+        expressionInput->setFocus();
+    }
+
+    void CalculatorWindow::insertReciprocal()
+    {
+        const bool hasSelection = expressionInput->hasSelectedText();
+        const int insertionPosition = hasSelection
+            ? expressionInput->selectionStart()
+            : expressionInput->cursorPosition();
+        const QString selected = expressionInput->selectedText();
+        expressionInput->insert(hasSelection ? "1/(" + selected + ")" : "1/()");
+        expressionInput->setCursorPosition(
+            hasSelection ? insertionPosition + selected.size() + 4 : insertionPosition + 3
+        );
         expressionInput->setFocus();
     }
 
@@ -830,6 +858,27 @@ namespace CalculatorUI
         addFunctionButton(QStringLiteral("cos⁻¹"), "acos", "arcCosineButton", 1, 1);
         addFunctionButton(QStringLiteral("tan⁻¹"), "atan", "arcTangentButton", 1, 2);
 
+        auto* factorialButton = createKeyButton("!", "factorialButton", "function", keypad);
+        connect(factorialButton, &QPushButton::clicked, this,
+                [this]() { insertPostfixOperator("!"); });
+        grid->addWidget(factorialButton, 1, 3);
+
+        auto* percentageButton = createKeyButton("%", "percentageButton", "function", keypad);
+        connect(percentageButton, &QPushButton::clicked, this,
+                [this]() { insertPostfixOperator("%"); });
+        grid->addWidget(percentageButton, 1, 4);
+
+        auto* reciprocalButton = createKeyButton("1/x", "reciprocalButton", "function", keypad);
+        connect(reciprocalButton, &QPushButton::clicked, this,
+                [this]() { insertReciprocal(); });
+        grid->addWidget(reciprocalButton, 1, 5);
+
+        auto* cubeButton = createKeyButton(QStringLiteral("x³"), "cubeButton", "function",
+                                           keypad);
+        connect(cubeButton, &QPushButton::clicked, this,
+                [this]() { insertPowerShortcut(3); });
+        grid->addWidget(cubeButton, 1, 6);
+
         addFunctionButton(QStringLiteral("|x|"), "abs", "absButton", 2, 0);
         addFunctionButton("ln", "ln", "lnButton", 2, 1);
         addFunctionButton(QStringLiteral("log₁₀"), "log10", "log10Button", 2, 2);
@@ -844,7 +893,8 @@ namespace CalculatorUI
         addInsertButton(QStringLiteral("xʸ"), "^", "functionsPowerButton", "operator", 3, 2);
         auto* squareButton = createKeyButton(QStringLiteral("x²"), "squareButton", "function",
                                              keypad);
-        connect(squareButton, &QPushButton::clicked, this, [this]() { insertSquare(); });
+        connect(squareButton, &QPushButton::clicked, this,
+                [this]() { insertPowerShortcut(2); });
         grid->addWidget(squareButton, 3, 3);
         addInsertButton("4", "4", "functions4Button", "digit", 3, 4);
         addInsertButton("5", "5", "functions5Button", "digit", 3, 5);

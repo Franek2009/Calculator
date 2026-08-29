@@ -1,6 +1,7 @@
 #include "BasicOperations.h"
 
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace Calculator::BasicOperations
@@ -88,6 +89,32 @@ namespace Calculator::BasicOperations
         }
 
         return std::atan(value);
+    }
+
+    double factorial(double value)
+    {
+        if (!std::isfinite(value) || value < 0 || std::trunc(value) != value)
+        {
+            throw std::invalid_argument(
+                "Factorial is only defined for non-negative integers"
+            );
+        }
+
+        double result = 1;
+        for (double factor = 2; factor <= value; factor += 1)
+        {
+            if (result > std::numeric_limits<double>::max() / factor)
+            {
+                throw std::invalid_argument("Factorial result is too large");
+            }
+            result *= factor;
+        }
+        return result;
+    }
+
+    double percentage(double value)
+    {
+        return value / 100.0;
     }
 
     double absoluteValue(double number)
