@@ -1,0 +1,223 @@
+name: Package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: 6.8.4
+
+jobs:
+  package-linux:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes binutils ninja-build xvfb
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: linux_gcc_64
+          cache: false
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          -DCALCULATOR_DEPLOY_QT=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Install deployable application
+        run: >-
+          cmake --install build
+          --prefix package/Calculator-linux-x86_64-ubuntu-24.04
+
+      - name: Include Qt license texts
+        shell: bash
+        run: |
+          qt_licenses="$QT_ROOT_DIR/LICENSES"
+          package_licenses="package/Calculator-linux-x86_64-ubuntu-24.04/licenses/Qt"
+          test -d "$qt_licenses"
+          mkdir -p "$package_licenses"
+          cp -R "$qt_licenses"/. "$package_licenses"/
+
+      - name: Validate Linux package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_root="$GITHUB_WORKSPACE/package/Calculator-linux-x86_64-ubuntu-24.04"
+          executable="$package_root/bin/Calculator"
+
+          test -x "$executable"
+          test -f "$package_root/bin/qt.conf"
+          test -f "$package_root/lib/qt6/plugins/platforms/libqxcb.so"
+          compgen -G "$package_root/lib/libQt6Core.so*" > /dev/null
+          compgen -G "$package_root/lib/libQt6Gui.so*" > /dev/null
+          compgen -G "$package_root/lib/libQt6Widgets.so*" > /dev/null
+
+          dependency_report="$RUNNER_TEMP/calculator-linux-dependencies.txt"
+          : > "$dependency_report"
+          while IFS= read -r -d '' binary; do
+            printf '\n%s\n' "$binary" >> "$dependency_report"
+            ldd "$binary" >> "$dependency_report"
+          done < <(find "$package_root" -type f \( -name Calculator -o -name '*.so' -o -name '*.so.*' \) -print0)
+          cat "$dependency_report"
+          if grep -F "not found" "$dependency_report"; then
+            exit 1
+          fi
+
+          executable_dependencies="$(ldd "$executable")"
+          printf '%s\n' "$executable_dependencies"
+          printf '%s\n' "$executable_dependencies" |
+            grep -E "libQt6(Core|Gui|Widgets).*=> $package_root/lib/"
+          readelf -d "$executable" | grep -E '(RPATH|RUNPATH)'
+
+          if find "$package_root" -type f -iname '*Tests*' | grep -q .; then
+            echo "Test binaries must not be present in the package" >&2
+            exit 1
+          fi
+
+          set +e
+          env -u LD_LIBRARY_PATH QT_QPA_PLATFORM=xcb xvfb-run --auto-servernum \
+            timeout 5s "$executable"
+          smoke_status=$?
+          set -e
+          if [ "$smoke_status" -ne 124 ]; then
+            echo "Packaged application failed its offscreen smoke test" >&2
+            exit 1
+          fi
+
+      - name: Create Linux archive
+        run: >-
+          tar -C package -czf Calculator-linux-x86_64-ubuntu-24.04.tar.gz
+          Calculator-linux-x86_64-ubuntu-24.04
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calculator-linux-x86_64-ubuntu-24.04
+          path: Calculator-linux-x86_64-ubuntu-24.04.tar.gz
+          if-no-files-found: error
+
+  package-windows:
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          cache: false
+
+      - name: Configure
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -A x64
+          -DBUILD_TESTING=OFF
+          -DCALCULATOR_DEPLOY_QT=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install deployable application
+        shell: pwsh
+        run: >-
+          cmake --install build --config Release
+          --prefix package/Calculator-windows-x86_64
+
+      - name: Include Qt license texts
+        shell: pwsh
+        run: |
+          $licenseSource = Join-Path $env:QT_ROOT_DIR "LICENSES"
+          $licenseTarget = "package/Calculator-windows-x86_64/licenses/Qt"
+          if (-not (Test-Path $licenseSource -PathType Container)) {
+            throw "Qt license directory was not found: $licenseSource"
+          }
+          New-Item -ItemType Directory -Force -Path $licenseTarget | Out-Null
+          Copy-Item -Recurse -Force "$licenseSource/*" $licenseTarget
+
+      - name: Validate Windows package
+        shell: pwsh
+        run: |
+          $packageRoot = (Resolve-Path "package/Calculator-windows-x86_64").Path
+          $binDirectory = Join-Path $packageRoot "bin"
+          $executable = Join-Path $binDirectory "Calculator.exe"
+
+          $requiredFiles = @(
+            $executable,
+            (Join-Path $binDirectory "Qt6Core.dll"),
+            (Join-Path $binDirectory "Qt6Gui.dll"),
+            (Join-Path $binDirectory "Qt6Widgets.dll"),
+            (Join-Path $binDirectory "platforms/qwindows.dll")
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Required deployed file is missing: $file"
+            }
+          }
+
+          $deploymentFiles = & windeployqt --release --no-translations `
+            --dry-run --list relative $executable
+          if ($LASTEXITCODE -ne 0) {
+            throw "windeployqt dry-run failed"
+          }
+          foreach ($relativePath in $deploymentFiles) {
+            $relativePath = $relativePath.Trim()
+            if ($relativePath -and
+                -not (Test-Path (Join-Path $binDirectory $relativePath))) {
+              throw "windeployqt dependency is missing: $relativePath"
+            }
+          }
+
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vsInstall = & $vswhere -latest -property installationPath
+          Import-Module "$vsInstall/Common7/Tools/Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vsInstall -SkipAutomaticLocation
+          dumpbin /DEPENDENTS $executable
+
+          $testFiles = Get-ChildItem $packageRoot -Recurse -File |
+            Where-Object { $_.Name -match "Tests" }
+          if ($testFiles) {
+            throw "Test binaries must not be present in the package"
+          }
+
+          $savedPath = $env:PATH
+          try {
+            $env:PATH = "$binDirectory;$env:SystemRoot;$env:SystemRoot/System32"
+            $process = Start-Process -FilePath $executable -PassThru
+            Start-Sleep -Seconds 3
+            if ($process.HasExited) {
+              throw "Packaged application exited during its smoke test"
+            }
+            Stop-Process -Id $process.Id -Force
+          }
+          finally {
+            $env:PATH = $savedPath
+          }
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calculator-windows-x86_64
+          path: package/Calculator-windows-x86_64
+          if-no-files-found: error

@@ -8,6 +8,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
 include(GNUInstallDirs)
 
+option(CALCULATOR_DEPLOY_QT
+    "Install Qt runtime libraries and plugins with the application"
+    OFF
+)
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 add_library(CalculatorCore STATIC
@@ -35,9 +40,34 @@ add_executable(Calculator
 
 target_link_libraries(Calculator PRIVATE CalculatorUi)
 
+set_target_properties(Calculator PROPERTIES
+    WIN32_EXECUTABLE TRUE
+)
+
 install(TARGETS Calculator
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+install(FILES
+    LICENSE
+    README.md
+    DESTINATION .
+)
+
+if(CALCULATOR_DEPLOY_QT)
+    if(Qt6_VERSION VERSION_LESS 6.5)
+        message(FATAL_ERROR
+            "CALCULATOR_DEPLOY_QT requires Qt 6.5 or newer"
+        )
+    endif()
+
+    qt_generate_deploy_app_script(
+        TARGET Calculator
+        OUTPUT_SCRIPT calculator_deploy_script
+        NO_TRANSLATIONS
+    )
+    install(SCRIPT ${calculator_deploy_script})
+endif()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)

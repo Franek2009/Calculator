@@ -59,6 +59,23 @@ For a single-config build, run:
 
 Multi-config generators may place the executable in a configuration subdirectory such as `build/Debug` or `build/Release`.
 
+## Downloadable artifacts
+
+The GitHub Actions `Package` workflow produces temporary downloadable artifacts for
+64-bit Windows and Linux. These are CI artifacts rather than stable GitHub Releases.
+
+- `Calculator-windows-x86_64` contains a Release build with the required Qt DLLs and
+  plugins. Extract the artifact and run `bin/Calculator.exe`. The executable is not
+  code-signed, so Windows may display a SmartScreen warning.
+- `Calculator-linux-x86_64-ubuntu-24.04` contains a `.tar.gz` archive with the
+  application, Qt libraries, plugins, and `qt.conf`. Extract it and run
+  `bin/Calculator`.
+
+The Linux build targets x86-64 systems compatible with Ubuntu 24.04. Bundling Qt does
+not bundle the kernel, glibc, graphics drivers, or the complete Linux display stack,
+so compatibility with older or substantially different distributions is not
+guaranteed. This artifact does not provide desktop or package-manager integration.
+
 ## Tests
 
 After building, run the complete Core and Qt UI test suite through CTest:
