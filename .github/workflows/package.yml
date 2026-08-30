@@ -100,10 +100,11 @@ jobs:
           set -euo pipefail
           package_root="$GITHUB_WORKSPACE/package/Calculator-linux-x86_64-ubuntu-24.04"
           executable="$package_root/bin/Calculator"
+          platform_plugin="$package_root/plugins/platforms/libqxcb.so"
 
           test -x "$executable"
           test -f "$package_root/bin/qt.conf"
-          test -f "$package_root/plugins/platforms/libqxcb.so"
+          test -f "$platform_plugin"
           compgen -G "$package_root/lib/libQt6Core.so*" > /dev/null
           compgen -G "$package_root/lib/libQt6Gui.so*" > /dev/null
           compgen -G "$package_root/lib/libQt6Widgets.so*" > /dev/null
@@ -112,18 +113,28 @@ jobs:
           : > "$dependency_report"
           while IFS= read -r -d '' binary; do
             printf '\n%s\n' "$binary" >> "$dependency_report"
-            ldd "$binary" >> "$dependency_report"
+            env -u LD_LIBRARY_PATH ldd "$binary" >> "$dependency_report"
           done < <(find "$package_root" -type f \( -name Calculator -o -name '*.so' -o -name '*.so.*' \) -print0)
           cat "$dependency_report"
           if grep -F "not found" "$dependency_report"; then
             exit 1
           fi
+          if grep -F "$QT_ROOT_DIR" "$dependency_report"; then
+            echo "Packaged dependencies must not resolve from the Qt SDK" >&2
+            exit 1
+          fi
 
-          executable_dependencies="$(ldd "$executable")"
+          executable_dependencies="$(env -u LD_LIBRARY_PATH ldd "$executable")"
           printf '%s\n' "$executable_dependencies"
           printf '%s\n' "$executable_dependencies" |
             grep -E "libQt6(Core|Gui|Widgets).*=> $package_root/lib/"
-          readelf -d "$executable" | grep -E '(RPATH|RUNPATH)'
+
+          executable_dynamic="$(readelf -d "$executable")"
+          plugin_dynamic="$(readelf -d "$platform_plugin")"
+          printf '%s\n' "$executable_dynamic"
+          printf '%s\n' "$plugin_dynamic"
+          printf '%s\n' "$executable_dynamic" | grep -F '$ORIGIN/../lib'
+          printf '%s\n' "$plugin_dynamic" | grep -F '$ORIGIN/../../lib'
 
           if find "$package_root" -type f -iname '*Tests*' | grep -q .; then
             echo "Test binaries must not be present in the package" >&2
@@ -216,6 +227,7 @@ jobs:
         run: |
           $packageRoot = (Resolve-Path "package/Calculator-windows-x86_64").Path
           $binDirectory = Join-Path $packageRoot "bin"
+          $pluginsDirectory = Join-Path $packageRoot "plugins"
           $executable = Join-Path $binDirectory "Calculator.exe"
 
           $requiredFiles = @(
@@ -232,14 +244,15 @@ jobs:
           }
 
           $deploymentFiles = & windeployqt --release --no-translations `
-            --dry-run --list relative $executable
+            --dry-run --list relative --dir $packageRoot `
+            --libdir $binDirectory --plugindir $pluginsDirectory $executable
           if ($LASTEXITCODE -ne 0) {
             throw "windeployqt dry-run failed"
           }
           foreach ($relativePath in $deploymentFiles) {
             $relativePath = $relativePath.Trim()
             if ($relativePath -and
-                -not (Test-Path (Join-Path $binDirectory $relativePath))) {
+                -not (Test-Path (Join-Path $packageRoot $relativePath))) {
               throw "windeployqt dependency is missing: $relativePath"
             }
           }

@@ -61,6 +61,12 @@ if(CALCULATOR_DEPLOY_QT)
         )
     endif()
 
+    if(UNIX AND NOT APPLE)
+        set_target_properties(Calculator PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+        )
+    endif()
+
     qt_finalize_target(Calculator)
     qt_generate_deploy_app_script(
         TARGET Calculator
