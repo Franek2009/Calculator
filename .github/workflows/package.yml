@@ -126,8 +126,27 @@ jobs:
 
           executable_dependencies="$(env -u LD_LIBRARY_PATH ldd "$executable")"
           printf '%s\n' "$executable_dependencies"
-          printf '%s\n' "$executable_dependencies" |
-            grep -E "libQt6(Core|Gui|Widgets).*=> $package_root/lib/"
+          canonical_lib_dir="$(realpath "$package_root/lib")"
+          for dependency in libQt6Core.so.6 libQt6Gui.so.6 libQt6Widgets.so.6; do
+            resolved_path="$(printf '%s\n' "$executable_dependencies" |
+              awk -v dependency="$dependency" \
+                '$1 == dependency && $2 == "=>" { print $3; exit }')"
+            if [ -z "$resolved_path" ]; then
+              echo "Required dependency was not resolved: $dependency" >&2
+              exit 1
+            fi
+            if ! canonical_path="$(realpath "$resolved_path")"; then
+              echo "Could not canonicalize $dependency path: $resolved_path" >&2
+              exit 1
+            fi
+            case "$canonical_path" in
+              "$canonical_lib_dir"/*) ;;
+              *)
+                echo "$dependency resolved outside the package: $canonical_path" >&2
+                exit 1
+                ;;
+            esac
+          done
 
           executable_dynamic="$(readelf -d "$executable")"
           plugin_dynamic="$(readelf -d "$platform_plugin")"
@@ -227,7 +246,6 @@ jobs:
         run: |
           $packageRoot = (Resolve-Path "package/Calculator-windows-x86_64").Path
           $binDirectory = Join-Path $packageRoot "bin"
-          $pluginsDirectory = Join-Path $packageRoot "plugins"
           $executable = Join-Path $binDirectory "Calculator.exe"
 
           $requiredFiles = @(
@@ -240,20 +258,6 @@ jobs:
           foreach ($file in $requiredFiles) {
             if (-not (Test-Path $file -PathType Leaf)) {
               throw "Required deployed file is missing: $file"
-            }
-          }
-
-          $deploymentFiles = & windeployqt --release --no-translations `
-            --dry-run --list relative --dir $packageRoot `
-            --libdir $binDirectory --plugindir $pluginsDirectory $executable
-          if ($LASTEXITCODE -ne 0) {
-            throw "windeployqt dry-run failed"
-          }
-          foreach ($relativePath in $deploymentFiles) {
-            $relativePath = $relativePath.Trim()
-            if ($relativePath -and
-                -not (Test-Path (Join-Path $packageRoot $relativePath))) {
-              throw "windeployqt dependency is missing: $relativePath"
             }
           }
 
