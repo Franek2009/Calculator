@@ -59,25 +59,29 @@ For a single-config build, run:
 
 Multi-config generators may place the executable in a configuration subdirectory such as `build/Debug` or `build/Release`.
 
-## Downloadable artifacts
+## Releases
 
-The GitHub Actions `Package` workflow produces three temporary downloadable
-artifacts. These are CI artifacts rather than stable GitHub Releases.
+Ready-to-run builds are available from the
+[latest GitHub Release](https://github.com/Franek2009/Calculator/releases/latest).
 
-- `Calculator-windows-x86_64` contains a Release build with the required Qt DLLs and
-  plugins. Extract the artifact and run `bin/Calculator.exe`. The executable is not
-  code-signed, so Windows may display a SmartScreen warning.
-- `Calculator-linux-x86_64-ubuntu-24.04` contains a `.tar.gz` archive with the
-  application, Qt libraries, plugins, and `qt.conf`. Extract it and run
-  `bin/Calculator`.
-- `Calculator-Qt-sources-6.8.3` contains the official Qt Base 6.8.3 and Qt SVG
-  6.8.3 source archives corresponding to the Qt runtime distributed with both
-  binary artifacts, together with verified SHA-256 checksums.
+### Windows x86-64
 
-The Linux build targets x86-64 systems compatible with Ubuntu 24.04. Bundling Qt does
-not bundle the kernel, glibc, graphics drivers, or the complete Linux display stack,
-so compatibility with older or substantially different distributions is not
-guaranteed. This artifact does not provide desktop or package-manager integration.
+Download the Windows x86-64 `.zip` archive, extract it, and run
+`bin/Calculator.exe`. The executable is not code-signed, so Windows may display
+a SmartScreen warning.
+
+### Linux x86-64
+
+Download the Linux x86-64 Ubuntu 24.04 `.tar.gz` archive, extract it, and run
+`bin/Calculator`. This build targets Ubuntu 24.04 and compatible x86-64
+systems; compatibility with every Linux distribution is not guaranteed.
+
+The archive includes the required Qt runtime libraries and plugins, but it does
+not bundle glibc, graphics drivers, or the complete Linux display stack. It also
+does not provide desktop or package-manager integration.
+
+`Calculator-Qt-sources-6.8.3.tar.gz` contains the corresponding Qt source code
+provided for license compliance. It is not required to run Calculator.
 
 ## Tests
 
@@ -111,7 +115,7 @@ Standard text-editing shortcuts supported by `QLineEdit` continue to work in the
 
 ## Project status
 
-The project is complete in its current scope and is considered ready for version 1.0.
+The project is complete in its current scope. Version 1.0.0 has been released.
 
 ## License
 
