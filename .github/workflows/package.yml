@@ -3,6 +3,7 @@ name: Package
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -293,3 +294,67 @@ jobs:
           name: Calculator-windows-x86_64
           path: package/Calculator-windows-x86_64
           if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [package-linux, package-windows, package-qt-sources]
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Calculator-linux-x86_64-ubuntu-24.04
+          path: release-input/linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Calculator-windows-x86_64
+          path: release-input/windows
+
+      - name: Download Qt corresponding-source artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Calculator-Qt-sources-6.8.3
+          path: release-input/qt-sources
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          assets_dir="$GITHUB_WORKSPACE/release-assets"
+          mkdir -p "$assets_dir"
+
+          cp release-input/linux/Calculator-linux-x86_64-ubuntu-24.04.tar.gz \
+            "$assets_dir/Calculator-${tag}-linux-x86_64-ubuntu-24.04.tar.gz"
+
+          (
+            cd release-input/windows
+            zip -r \
+              "$assets_dir/Calculator-${tag}-windows-x86_64.zip" .
+          )
+
+          tar -C release-input/qt-sources -czf \
+            "$assets_dir/Calculator-Qt-sources-${QT_VERSION}.tar.gz" .
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" release-assets/* --clobber
+          else
+            gh release create "$tag" release-assets/* \
+              --verify-tag \
+              --title "Calculator $tag" \
+              --generate-notes
+          fi
