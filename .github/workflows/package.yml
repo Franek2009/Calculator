@@ -46,7 +46,7 @@ jobs:
       - name: Install deployable application
         run: >-
           cmake --install build
-          --prefix package/Calculator-linux-x86_64-ubuntu-24.04
+          --prefix "$GITHUB_WORKSPACE/package/Calculator-linux-x86_64-ubuntu-24.04"
 
       - name: Include Qt license texts
         shell: bash
@@ -141,9 +141,9 @@ jobs:
 
       - name: Install deployable application
         shell: pwsh
-        run: >-
-          cmake --install build --config Release
-          --prefix package/Calculator-windows-x86_64
+        run: |
+          $installPrefix = Join-Path $env:GITHUB_WORKSPACE "package/Calculator-windows-x86_64"
+          cmake --install build --config Release --prefix "$installPrefix"
 
       - name: Include Qt license texts
         shell: pwsh
