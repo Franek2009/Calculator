@@ -61,8 +61,8 @@ Multi-config generators may place the executable in a configuration subdirectory
 
 ## Downloadable artifacts
 
-The GitHub Actions `Package` workflow produces temporary downloadable artifacts for
-64-bit Windows and Linux. These are CI artifacts rather than stable GitHub Releases.
+The GitHub Actions `Package` workflow produces three temporary downloadable
+artifacts. These are CI artifacts rather than stable GitHub Releases.
 
 - `Calculator-windows-x86_64` contains a Release build with the required Qt DLLs and
   plugins. Extract the artifact and run `bin/Calculator.exe`. The executable is not
@@ -70,6 +70,9 @@ The GitHub Actions `Package` workflow produces temporary downloadable artifacts 
 - `Calculator-linux-x86_64-ubuntu-24.04` contains a `.tar.gz` archive with the
   application, Qt libraries, plugins, and `qt.conf`. Extract it and run
   `bin/Calculator`.
+- `Calculator-Qt-sources-6.8.3` contains the official Qt Base 6.8.3 and Qt SVG
+  6.8.3 source archives corresponding to the Qt runtime distributed with both
+  binary artifacts, together with verified SHA-256 checksums.
 
 The Linux build targets x86-64 systems compatible with Ubuntu 24.04. Bundling Qt does
 not bundle the kernel, glibc, graphics drivers, or the complete Linux display stack,

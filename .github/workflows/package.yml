@@ -14,6 +14,37 @@ env:
   QT_VERSION: 6.8.3
 
 jobs:
+  package-qt-sources:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download and verify Qt corresponding sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_dir="$RUNNER_TEMP/Calculator-Qt-sources-${QT_VERSION}"
+          base_url="https://download.qt.io/official_releases/qt/6.8/${QT_VERSION}/submodules"
+          mkdir -p "$source_dir"
+          cd "$source_dir"
+
+          curl --fail --location --retry 3 --remote-name \
+            "$base_url/qtbase-everywhere-src-${QT_VERSION}.tar.xz"
+          curl --fail --location --retry 3 --remote-name \
+            "$base_url/qtsvg-everywhere-src-${QT_VERSION}.tar.xz"
+
+          cat > SHA256SUMS <<'EOF'
+          56001b905601bb9023d399f3ba780d7fa940f3e4861e496a7c490331f49e0b80  qtbase-everywhere-src-6.8.3.tar.xz
+          35eb516460f00f264eb504baa253432384351cf23fb9980a5857190e8deef438  qtsvg-everywhere-src-6.8.3.tar.xz
+          EOF
+          sha256sum --check SHA256SUMS
+
+      - name: Upload Qt corresponding-source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calculator-Qt-sources-6.8.3
+          path: ${{ runner.temp }}/Calculator-Qt-sources-6.8.3
+          if-no-files-found: error
+
   package-linux:
     runs-on: ubuntu-24.04
 
@@ -48,14 +79,20 @@ jobs:
           cmake --install build
           --prefix "$GITHUB_WORKSPACE/package/Calculator-linux-x86_64-ubuntu-24.04"
 
-      - name: Include Qt license texts
+      - name: Include third-party notices
         shell: bash
         run: |
-          qt_licenses="$QT_ROOT_DIR/LICENSES"
-          package_licenses="package/Calculator-linux-x86_64-ubuntu-24.04/licenses/Qt"
+          qt_licenses="$GITHUB_WORKSPACE/third_party/qt"
+          icu_license="$GITHUB_WORKSPACE/third_party/icu/LICENSE.txt"
+          platform_notice="$GITHUB_WORKSPACE/third_party/notices/linux/THIRD-PARTY-NOTICES.md"
+          package_licenses="package/Calculator-linux-x86_64-ubuntu-24.04/licenses"
           test -d "$qt_licenses"
-          mkdir -p "$package_licenses"
-          cp -R "$qt_licenses"/. "$package_licenses"/
+          test -f "$icu_license"
+          test -f "$platform_notice"
+          mkdir -p "$package_licenses/Qt" "$package_licenses/ICU"
+          cp -R "$qt_licenses"/. "$package_licenses/Qt"/
+          cp "$icu_license" "$package_licenses/ICU/LICENSE.txt"
+          cp "$platform_notice" "$package_licenses/THIRD-PARTY-NOTICES.md"
 
       - name: Validate Linux package
         shell: bash
@@ -145,16 +182,34 @@ jobs:
           $installPrefix = Join-Path $env:GITHUB_WORKSPACE "package/Calculator-windows-x86_64"
           cmake --install build --config Release --prefix "$installPrefix"
 
-      - name: Include Qt license texts
+      - name: Include third-party notices
         shell: pwsh
         run: |
-          $licenseSource = Join-Path $env:QT_ROOT_DIR "LICENSES"
-          $licenseTarget = "package/Calculator-windows-x86_64/licenses/Qt"
-          if (-not (Test-Path $licenseSource -PathType Container)) {
-            throw "Qt license directory was not found: $licenseSource"
+          $licenseRoot = Join-Path $env:GITHUB_WORKSPACE "third_party"
+          $packageLicenses = "package/Calculator-windows-x86_64/licenses"
+          $requiredSources = @(
+            (Join-Path $licenseRoot "qt"),
+            (Join-Path $licenseRoot "mesa"),
+            (Join-Path $licenseRoot "microsoft/NOTICE.md"),
+            (Join-Path $licenseRoot "notices/windows/THIRD-PARTY-NOTICES.md")
+          )
+          foreach ($source in $requiredSources) {
+            if (-not (Test-Path $source)) {
+              throw "Third-party notice source was not found: $source"
+            }
           }
-          New-Item -ItemType Directory -Force -Path $licenseTarget | Out-Null
-          Copy-Item -Recurse -Force "$licenseSource/*" $licenseTarget
+          New-Item -ItemType Directory -Force -Path $packageLicenses | Out-Null
+          Copy-Item -Recurse -Force (Join-Path $licenseRoot "qt") `
+            (Join-Path $packageLicenses "Qt")
+          Copy-Item -Recurse -Force (Join-Path $licenseRoot "mesa") `
+            (Join-Path $packageLicenses "Mesa")
+          New-Item -ItemType Directory -Force `
+            -Path (Join-Path $packageLicenses "Microsoft") | Out-Null
+          Copy-Item -Force (Join-Path $licenseRoot "microsoft/NOTICE.md") `
+            (Join-Path $packageLicenses "Microsoft/NOTICE.md")
+          Copy-Item -Force `
+            (Join-Path $licenseRoot "notices/windows/THIRD-PARTY-NOTICES.md") `
+            (Join-Path $packageLicenses "THIRD-PARTY-NOTICES.md")
 
       - name: Validate Windows package
         shell: pwsh
