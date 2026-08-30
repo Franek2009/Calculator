@@ -103,7 +103,7 @@ jobs:
 
           test -x "$executable"
           test -f "$package_root/bin/qt.conf"
-          test -f "$package_root/lib/qt6/plugins/platforms/libqxcb.so"
+          test -f "$package_root/plugins/platforms/libqxcb.so"
           compgen -G "$package_root/lib/libQt6Core.so*" > /dev/null
           compgen -G "$package_root/lib/libQt6Gui.so*" > /dev/null
           compgen -G "$package_root/lib/libQt6Widgets.so*" > /dev/null
@@ -223,7 +223,7 @@ jobs:
             (Join-Path $binDirectory "Qt6Core.dll"),
             (Join-Path $binDirectory "Qt6Gui.dll"),
             (Join-Path $binDirectory "Qt6Widgets.dll"),
-            (Join-Path $binDirectory "platforms/qwindows.dll")
+            (Join-Path $packageRoot "plugins/platforms/qwindows.dll")
           )
           foreach ($file in $requiredFiles) {
             if (-not (Test-Path $file -PathType Leaf)) {

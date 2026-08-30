@@ -61,6 +61,7 @@ if(CALCULATOR_DEPLOY_QT)
         )
     endif()
 
+    qt_finalize_target(Calculator)
     qt_generate_deploy_app_script(
         TARGET Calculator
         OUTPUT_SCRIPT calculator_deploy_script
